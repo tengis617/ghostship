@@ -31,8 +31,11 @@ export function HeroForm() {
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-3">
-      <form onSubmit={handleSubmit} className="flex w-full max-w-lg gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="flex w-full flex-col items-center gap-3"
+    >
+      <div className="flex w-full max-w-lg gap-2">
         <input
           type="text"
           value={url}
@@ -62,7 +65,7 @@ export function HeroForm() {
             />
           </svg>
         </button>
-      </form>
+      </div>
 
       <div className="flex flex-wrap justify-center gap-2">
         <span className="py-1 font-mono text-[11px] text-[#444]">Try:</span>
@@ -77,6 +80,6 @@ export function HeroForm() {
           </button>
         ))}
       </div>
-    </div>
+    </form>
   );
 }

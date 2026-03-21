@@ -140,11 +140,11 @@ export default function Home() {
             />
           </div>
 
-          <h1 className="text-5xl font-black tracking-tighter text-white md:text-7xl">
+          <h1 className="text-7xl font-black tracking-tighter text-white md:text-9xl drop-shadow-[0_0_40px_var(--color-ghost-dim)]">
             ghostship
           </h1>
 
-          <p className="max-w-lg text-lg font-medium tracking-tight text-[#EAEAEA] md:text-xl">
+          <p className="max-w-lg text-xl font-medium tracking-tight text-[#EAEAEA] md:text-2xl">
             Phantom users for every pull request.
           </p>
 
@@ -493,15 +493,15 @@ export default function Home() {
 
         <div className="grid w-full max-w-5xl gap-6 md:grid-cols-2">
           {/* Slack demo */}
-          <div className="group relative overflow-hidden rounded-2xl border border-[#1a1a1a] bg-[#0a0a0a]">
-            <div className="flex items-center gap-2 border-b border-[#1a1a1a] px-4 py-3">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <div className="group relative overflow-hidden rounded-2xl border border-[#222] bg-[#0a0a0a]">
+            <div className="flex items-center gap-2.5 border-b border-[#222] bg-[#111] px-5 py-3.5">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
                 <path d="M3.4 10.1a1.7 1.7 0 1 1-1.7-1.7h1.7v1.7Zm.85 0a1.7 1.7 0 1 1 3.4 0v4.2a1.7 1.7 0 1 1-3.4 0v-4.2Z" fill="#E01E5A"/>
                 <path d="M5.9 3.4a1.7 1.7 0 1 1 1.7-1.7v1.7H5.9Zm0 .85a1.7 1.7 0 1 1 0 3.4H1.7a1.7 1.7 0 1 1 0-3.4h4.2Z" fill="#36C5F0"/>
                 <path d="M12.6 5.9a1.7 1.7 0 1 1 1.7 1.7h-1.7V5.9Zm-.85 0a1.7 1.7 0 1 1-3.4 0V1.7a1.7 1.7 0 1 1 3.4 0v4.2Z" fill="#2EB67D"/>
                 <path d="M10.1 12.6a1.7 1.7 0 1 1-1.7 1.7v-1.7h1.7Zm0-.85a1.7 1.7 0 1 1 0-3.4h4.2a1.7 1.7 0 1 1 0 3.4h-4.2Z" fill="#ECB22E"/>
               </svg>
-              <span className="font-mono text-[11px] tracking-wide text-[#666]">Slack</span>
+              <span className="text-sm font-medium text-[#ccc]">Slack</span>
             </div>
             <video
               autoPlay
@@ -514,12 +514,12 @@ export default function Home() {
           </div>
 
           {/* GitHub demo */}
-          <div className="group relative overflow-hidden rounded-2xl border border-[#1a1a1a] bg-[#0a0a0a]">
-            <div className="flex items-center gap-2 border-b border-[#1a1a1a] px-4 py-3">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="#888">
+          <div className="group relative overflow-hidden rounded-2xl border border-[#222] bg-[#0a0a0a]">
+            <div className="flex items-center gap-2.5 border-b border-[#222] bg-[#111] px-5 py-3.5">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="#ccc">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
               </svg>
-              <span className="font-mono text-[11px] tracking-wide text-[#666]">GitHub PR</span>
+              <span className="text-sm font-medium text-[#ccc]">GitHub PR</span>
             </div>
             <video
               autoPlay
