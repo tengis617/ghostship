@@ -149,6 +149,65 @@ These depend on Batch 1 being complete.
    VERIFY: curl -X POST localhost:3000/api/evaluate -H 'Content-Type: application/json' -d '{"previewUrl":"https://vercel.com"}' → valid JSON
 
 =====================================
+BATCH 2.5: PERSONA TESTING (independent, can run now)
+=====================================
+
+## Track 8: Single-Page Evaluation Script
+   Owner: src/lib/evaluate.ts (MODIFY), src/lib/personas.ts (MODIFY), scripts/evaluate-page.ts (CREATE)
+   Purpose: Validate persona quality by evaluating a single page (no A/B comparison)
+   [x] Add PageEvaluation type to personas.ts (overallImpression, score, firstImpression, rationale, strengths, weaknesses, suggestions)
+   [x] Add evaluatePage(persona, pagePng, pageUrl?) function to evaluate.ts
+       — separate system prompt for single-page UX audit (not A/B comparison)
+       — zod schema matching PageEvaluation
+       — uses gemini-2.5-flash with structured output
+   [x] Create scripts/evaluate-page.ts CLI script
+       — takes URL as CLI arg
+       — loads .env.local via dotenv
+       — screenshots URL, runs all 5 personas in parallel
+       — prints formatted results with scores, impressions, strengths/weaknesses
+       — shows timing info
+   VERIFIED: npx tsx scripts/evaluate-page.ts https://vercel.com
+       — all 5 personas return differentiated feedback ✓
+       — scores vary across personas (6, 9, 6, 8, 8) ✓
+       — completes in 19.9s (< 60s) ✓
+
+=====================================
+BATCH 2.75: DOGFOODING (after deploy)
+=====================================
+
+## Track 9a: Pricing Page (Production Baseline)
+   Owner: src/app/pricing/page.tsx (CREATE)
+   [ ] Create 3-tier pricing page at /pricing
+       — Free ($0), Pro ($49/mo, highlighted), Enterprise (Custom)
+       — Dark theme matching landing page aesthetic
+       — Responsive 3-column grid (stacks on mobile)
+       — Pro tier highlighted with "Most Popular" badge
+       — Link back to home
+   [ ] Follow design skills: high-end-visual-design, design-taste-frontend
+   VERIFY: localhost:3000/pricing renders clean pricing page
+
+## Track 9b: Variant PRs (after 9a deployed to Vercel)
+   [ ] Create branch `pricing-v2` — layout variant (comparison table instead of cards)
+       — Same tiers/features, different presentation
+       — Add annual/monthly toggle
+       — Push + create PR via `gh pr create`
+   [ ] Create branch `pricing-v3` — copy/CTA variant (outcome-focused copy)
+       — Lead with outcomes instead of features
+       — Change CTA text, shift highlight to Enterprise
+       — Add social proof quotes
+       — Push + create PR via `gh pr create`
+   [ ] Note Vercel preview URLs for both PRs
+   VERIFY: 2 PRs open, each with working Vercel preview URL
+
+## Track 10: GitHub Adapter Integration
+   Owner: src/lib/bot.tsx (MODIFY if needed), .env.local (add GitHub creds)
+   [ ] Set up GitHub App or PAT (GITHUB_TOKEN + GITHUB_WEBHOOK_SECRET)
+   [ ] Configure GitHub webhook → /api/webhooks/github
+   [ ] Verify @ghostship mention in PR comment triggers the bot
+   [ ] Test: comment @ghostship <preview-url> on pricing-v2 PR → report card as PR comment
+   VERIFY: report card appears as GitHub PR comment with persona breakdown
+
+=====================================
 BATCH 3: POLISH & SHIP
 =====================================
 

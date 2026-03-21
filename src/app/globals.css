@@ -8,3 +8,55 @@
   --color-ghost-dim: #D4F5F520;
   --color-surface: #141414;
 }
+
+/* ─── Ghost bobbing ─── */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.ghost-bob {
+  animation: bob ease-in-out infinite;
+}
+
+/* ─── Ship rocking ─── */
+@keyframes rock {
+  0%, 100% { transform: rotate(-1.5deg) translateY(0); }
+  50% { transform: rotate(1.5deg) translateY(-3px); }
+}
+
+.ship-rock {
+  animation: rock 5s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+/* ─── Speech bubble fade cycle ─── */
+@keyframes bubble {
+  0%, 100% { opacity: 0; transform: translateY(4px); }
+  15%, 75% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 0; transform: translateY(-2px); }
+}
+
+.bubble-fade {
+  animation: bubble ease-in-out infinite;
+}
+
+/* ─── Queue pulse (running test indicator) ─── */
+@keyframes queue-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.queue-pulse {
+  animation: queue-pulse 1.5s ease-in-out infinite;
+}
+
+/* ─── Scroll indicator ─── */
+@keyframes scroll-hint {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 0.6; transform: translateY(6px); }
+}
+
+.scroll-hint {
+  animation: scroll-hint 2s ease-in-out infinite;
+}
