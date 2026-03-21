@@ -24,8 +24,11 @@ import {
   TextInput,
   toAiMessages,
 } from "chat";
+import { runGhostship } from "./agent";
+import type { GhostshipReport, PersonaResult } from "./personas";
 import { buildAdapters } from "./adapters";
 
+const URL_REGEX = /https?:\/\/[^\s>]+/i;
 const AI_MENTION_REGEX = /\bAI\b/i;
 const DISABLE_AI_REGEX = /disable\s*AI/i;
 const ENABLE_AI_REGEX = /enable\s*AI/i;
@@ -61,14 +64,77 @@ const agent = new ToolLoopAgent({
     "You are a helpful assistant in a chat thread. Answer the user's queries in a concise manner.",
 });
 
+// Format a GhostShip report as a Chat SDK Card
+function formatReportCard(report: GhostshipReport) {
+  const { winner, confidence, preferenceSplit, personas: results, summary } = report;
+
+  // Extract page path from preview URL
+  let pagePath: string;
+  try {
+    pagePath = new URL(report.previewUrl).pathname || "/";
+  } catch {
+    pagePath = "/";
+  }
+
+  // Winner headline
+  const majorityCount = Math.max(preferenceSplit.production, preferenceSplit.preview);
+  const minorityCount = Math.min(preferenceSplit.production, preferenceSplit.preview);
+  const winnerLabel = winner === "preview" ? "Preview" : "Production";
+  const headline =
+    winner === "inconclusive"
+      ? `Inconclusive (${preferenceSplit.production}-${preferenceSplit.preview})`
+      : `${winnerLabel} wins ${majorityCount}-${minorityCount}`;
+
+  return (
+    <Card title={`👻 Ghostship Report: ${pagePath}`}>
+      <Text>
+        {`**${headline}** · Confidence: ${confidence}%`}
+      </Text>
+      <Divider />
+      {results.map((result: PersonaResult) => (
+        <Section key={result.personaId}>
+          <Text>
+            {`${result.personaEmoji} **${result.personaName}**\nPrefers: **${result.preference}** (${result.confidence} confidence)\n_${result.rationale}_`}
+          </Text>
+        </Section>
+      ))}
+      <Divider />
+      <Section>
+        <Text>{`**Summary:** ${summary}`}</Text>
+      </Section>
+    </Card>
+  );
+}
+
 // Handle new @mentions of the bot
 bot.onNewMention(async (thread, message) => {
   await thread.subscribe();
 
-  // Check if user wants to enable AI mode (mention contains "AI")
+  // 1. Check for URL — run GhostShip pipeline
+  const urlMatch = message.text.match(URL_REGEX);
+  if (urlMatch) {
+    const url = urlMatch[0];
+    await thread.startTyping(
+      "🚢 Boarding your preview... deploying 5 phantom users"
+    );
+
+    try {
+      const report = await runGhostship(url);
+      await thread.post(formatReportCard(report));
+    } catch (err) {
+      console.error("GhostShip pipeline error:", err);
+      await thread.post(
+        `${emoji.warning} Something went wrong: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+    }
+    return;
+  }
+
+  // 2. Check if user wants AI mode
   if (AI_MENTION_REGEX.test(message.text)) {
     await thread.setState({ aiMode: true });
-    // Also respond to the initial message with AI (including any image attachments)
     await thread.startTyping("Thinking...");
     try {
       const history = await toAiMessages([message]);
@@ -85,50 +151,17 @@ bot.onNewMention(async (thread, message) => {
     return;
   }
 
-  // Default welcome card
+  // 3. No URL, no AI — show help
   await thread.startTyping();
   await thread.post(
-    <Card
-      subtitle={`Connected via ${thread.adapter.name}`}
-      title={`${emoji.wave} Welcome!`}
-    >
-      <Text>I'm now listening to this thread. Try these actions:</Text>
+    <Card title="👻 GhostShip">
       <Text>
-        {`${emoji.sparkles} **Mention me with "AI"** to enable AI assistant mode`}
+        {`Send me a Vercel preview URL and I'll deploy 5 phantom users to evaluate it.\n\n**Usage:** \`@ghostship <vercel-preview-url>\`\n\n**Example:** \`@ghostship https://my-app-git-redesign.vercel.app\``}
       </Text>
-      <CardLink url="https://chat-sdk.dev/docs/cards">
-        View documentation
-      </CardLink>
       <Divider />
-      <Fields>
-        <Field label="DM Support" value={thread.isDM ? "Yes" : "No"} />
-        <Field label="Platform" value={thread.adapter.name} />
-      </Fields>
-      <Divider />
-      <Actions>
-        <Select id="quick_action" label="Quick Action" placeholder="Choose...">
-          <SelectOption label="Say Hello" value="greet" />
-          <SelectOption label="Show Info" value="info" />
-          <SelectOption label="Get Help" value="help" />
-        </Select>
-        <Button id="hello" style="primary">
-          Say Hello
-        </Button>
-        <Button id="ephemeral">Ephemeral response</Button>
-        <Button id="info">Show Info</Button>
-        <Button id="choose_plan">Choose Plan</Button>
-        <Button id="feedback">Send Feedback</Button>
-        <Button id="messages">Fetch Messages</Button>
-        <Button id="channel-post">Channel Post</Button>
-        <Button id="show-table">Show Table</Button>
-        <Button id="report" value="bug">
-          Report Bug
-        </Button>
-        <LinkButton url="https://vercel.com">Open Link</LinkButton>
-        <Button id="goodbye" style="danger">
-          Goodbye
-        </Button>
-      </Actions>
+      <Text>
+        {`${emoji.sparkles} Mention me with "AI" to enable AI assistant mode instead.`}
+      </Text>
     </Card>
   );
 });

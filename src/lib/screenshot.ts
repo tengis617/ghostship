@@ -5,9 +5,9 @@ async function getBrowser() {
   if (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL) {
     return puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+      defaultViewport: { width: 1280, height: 800 },
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: true,
     });
   }
   return puppeteer.launch({

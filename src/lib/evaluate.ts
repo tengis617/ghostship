@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { Persona, PersonaResult } from "./personas";
 
@@ -48,9 +48,9 @@ what you notice — reference actual visual elements you can see in the
 screenshots. Your rationale should be one clear sentence written in your
 character's voice.`;
 
-  const result = await generateObject({
+  const result = await generateText({
     model: google("gemini-2.5-flash"),
-    schema: personaResultSchema,
+    output: Output.object({ schema: personaResultSchema }),
     messages: [
       { role: "system", content: systemPrompt },
       {
@@ -67,8 +67,12 @@ character's voice.`;
     ],
   });
 
+  if (!result.output) {
+    throw new Error(`No structured output from Gemini for persona ${persona.id}`);
+  }
+
   return {
-    ...result.object,
+    ...result.output,
     personaId: persona.id,
     personaName: persona.name,
     personaEmoji: persona.emoji,
