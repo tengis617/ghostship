@@ -19,6 +19,18 @@
   animation: bob ease-in-out infinite;
 }
 
+/* ─── Hero logo float ─── */
+@keyframes ghost-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(0.5deg); }
+  50% { transform: translateY(-3px) rotate(0deg); }
+  75% { transform: translateY(-8px) rotate(-0.5deg); }
+}
+
+.ghost-float {
+  animation: ghost-float 4s ease-in-out infinite;
+}
+
 /* ─── Ship rocking ─── */
 @keyframes rock {
   0%, 100% { transform: rotate(-1.5deg) translateY(0); }
@@ -59,4 +71,54 @@
 
 .scroll-hint {
   animation: scroll-hint 2s ease-in-out infinite;
+}
+
+/* ─── Phase pulse (CTA loading indicator) ─── */
+@keyframes phase-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+.phase-pulse {
+  animation: phase-pulse 1.2s ease-in-out infinite;
+}
+
+/* ─── Fade in (persona pills, eval cards) ─── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+/* ─── Page enter (evaluate page transition) ─── */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-enter 0.4s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* ─── Cursor blink (typewriter) ─── */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: cursor-blink 0.7s step-end infinite;
+}
+
+/* ─── Fast fade in (log entries) ─── */
+@keyframes fade-in-fast {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-fast {
+  animation: fade-in-fast 0.15s ease-out both;
 }

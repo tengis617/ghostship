@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { HeroForm } from "@/components/hero-form";
 
 /* ─── Ghost SVG (matches logo shape) ─── */
 
@@ -135,7 +136,7 @@ export default function Home() {
               width={144}
               height={144}
               priority
-              className="relative z-10"
+              className="relative z-10 ghost-float"
             />
           </div>
 
@@ -152,6 +153,11 @@ export default function Home() {
             <br />
             It just has zero users.
           </p>
+
+          {/* CTA */}
+          <div className="mt-4 w-full max-w-lg">
+            <HeroForm />
+          </div>
         </div>
 
         {/* Scroll indicator */}
@@ -311,20 +317,25 @@ export default function Home() {
 
           </div>
 
-          {/* Two columns — queue vs results */}
-          <div className="grid gap-8 md:grid-cols-2">
-            {/* Left: The queue (the problem) */}
-            <div>
-              <div className="mb-4 flex items-baseline justify-between">
-                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#ccc]">
-                  Experiment backlog
-                </h3>
-                <span className="font-mono text-[11px] text-[#FF6B6B]">
-                  7 waiting
+          {/* ── Triage: same backlog, two outcomes ── */}
+          <div className="mb-4 flex flex-col items-center gap-3">
+            <div className="h-6 w-px bg-gradient-to-b from-[#FF6B6B]/20 to-transparent" />
+            <p className="font-mono text-[11px] tracking-wide text-[#555]">
+              Same 7 features. Two outcomes.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-0">
+            {/* Left: Without GhostShip */}
+            <div className="rounded-xl border border-[#1a1a1a] bg-[#0a0a0a]/80 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-[13px] font-medium text-[#777]">Without GhostShip</p>
+                <span className="rounded-full border border-[#FF2A2A]/10 bg-[#FF2A2A]/5 px-2.5 py-0.5 font-mono text-[10px] text-[#FF6B6B]/70">
+                  ~14 weeks to clear
                 </span>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {[
                   { name: "Redesigned checkout flow", wait: "18d", status: "running" },
                   { name: "New pricing table", wait: "14d", status: "waiting" },
@@ -336,27 +347,33 @@ export default function Home() {
                 ].map((item, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between rounded border border-[#1e1e1e] bg-[#111] px-3 py-2.5"
+                    className={`flex items-center justify-between rounded-lg px-3 py-2 ${
+                      item.status === "running"
+                        ? "border border-amber-500/10 bg-amber-500/[0.03]"
+                        : "border border-transparent bg-[#111]/80"
+                    }`}
                   >
                     <div className="flex items-center gap-2.5">
                       <div
-                        className={`h-2 w-2 rounded-full ${
+                        className={`h-1.5 w-1.5 rounded-full ${
                           item.status === "running"
                             ? "bg-amber-500 queue-pulse"
                             : item.status === "waiting"
-                              ? "bg-[#FF4444]"
-                              : "bg-[#333]"
+                              ? "bg-[#FF4444]/60"
+                              : "bg-[#2a2a2a]"
                         }`}
                       />
-                      <span className="text-sm text-[#bbb]">{item.name}</span>
+                      <span className={`text-[13px] ${item.status === "queued" ? "text-[#555]" : "text-[#888]"}`}>
+                        {item.name}
+                      </span>
                     </div>
                     <span
-                      className={`font-mono text-[11px] ${
+                      className={`font-mono text-[10px] ${
                         item.status === "running"
-                          ? "text-amber-500"
+                          ? "text-amber-500/70 queue-pulse"
                           : item.status === "waiting"
-                            ? "text-[#FF6B6B]"
-                            : "text-[#444]"
+                            ? "text-[#FF6B6B]/40"
+                            : "text-[#2a2a2a]"
                       }`}
                     >
                       {item.status === "running" ? `${item.wait} running` : item.wait}
@@ -365,72 +382,96 @@ export default function Home() {
                 ))}
               </div>
 
-              <p className="mt-4 font-mono text-[11px] text-[#555]">
-                1 test at a time &middot; 2-4 weeks each &middot; most show no winner
-              </p>
+              <div className="mt-4 border-t border-[#1a1a1a] pt-3">
+                <p className="font-mono text-[10px] text-[#444]">
+                  1 running &middot; 6 waiting &middot; most will prove nothing
+                </p>
+              </div>
             </div>
 
-            {/* Right: With GhostShip (the solution) */}
-            <div>
-              <div className="mb-4 flex items-baseline justify-between">
-                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#ccc]">
-                  With GhostShip
-                </h3>
-                <span className="font-mono text-[11px] text-ghost">
-                  all pre-filtered
+            {/* Arrow connector (desktop) */}
+            <div className="hidden items-center justify-center px-3 md:flex">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#222] bg-[#111]">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M3 7h8m0 0L8 4m3 3L8 10" stroke="#D4F5F5" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Right: With GhostShip */}
+            <div className="rounded-xl border border-ghost/8 bg-[#0a0a0a]/80 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-[13px] font-medium text-[#ccc]">With GhostShip</p>
+                <span className="rounded-full border border-ghost/15 bg-ghost/5 px-2.5 py-0.5 font-mono text-[10px] text-ghost">
+                  30 seconds
                 </span>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {[
-                  { name: "Redesigned checkout flow", result: "Ship it", verdict: "5/5 prefer B", win: true },
-                  { name: "New pricing table", result: "Ship it", verdict: "4/5 prefer B", win: true },
-                  { name: "Simplified onboarding", result: "Kill it", verdict: "1/5 prefer B", win: false },
-                  { name: "Updated hero CTA", result: "Ship it", verdict: "4/5 prefer B", win: true },
-                  { name: "Dark mode support", result: "Test more", verdict: "3/5 prefer B", win: null },
-                  { name: "Mobile nav redesign", result: "Ship it", verdict: "5/5 prefer B", win: true },
-                  { name: "Footer link cleanup", result: "Kill it", verdict: "1/5 prefer B", win: false },
+                  { name: "Redesigned checkout flow", vote: "5–0", verdict: "Ship", win: true },
+                  { name: "New pricing table", vote: "4–1", verdict: "Ship", win: true },
+                  { name: "Simplified onboarding", vote: "1–4", verdict: "Kill", win: false },
+                  { name: "Updated hero CTA", vote: "4–1", verdict: "Ship", win: true },
+                  { name: "Dark mode support", vote: "3–2", verdict: "A/B test", win: null },
+                  { name: "Mobile nav redesign", vote: "5–0", verdict: "Ship", win: true },
+                  { name: "Footer link cleanup", vote: "1–4", verdict: "Kill", win: false },
                 ].map((item, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between rounded border border-[#1e1e1e] bg-[#111] px-3 py-2.5"
+                    className={`flex items-center justify-between rounded-lg border-l-2 py-2 pr-3 pl-3 ${
+                      item.win === true
+                        ? "border-l-emerald-500/50 bg-emerald-500/[0.03]"
+                        : item.win === false
+                          ? "border-l-[#222] bg-[#111]/50"
+                          : "border-l-amber-500/50 bg-amber-500/[0.04]"
+                    }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          item.win === true
-                            ? "bg-emerald-500"
-                            : item.win === false
-                              ? "bg-[#FF4444]"
-                              : "bg-amber-500"
-                        }`}
-                      />
-                      <span className="text-sm text-[#bbb]">{item.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="hidden font-mono text-[10px] text-[#555] sm:inline">
-                        {item.verdict}
+                      <span className={`w-6 font-mono text-[10px] tabular-nums ${
+                        item.win === true ? "text-emerald-500/40" : item.win === false ? "text-[#333]" : "text-amber-500/50"
+                      }`}>
+                        {item.vote}
                       </span>
-                      <span
-                        className={`font-mono text-[11px] font-medium ${
-                          item.win === true
-                            ? "text-emerald-500"
-                            : item.win === false
-                              ? "text-[#FF6B6B]"
-                              : "text-amber-500"
-                        }`}
-                      >
-                        {item.result}
+                      <span className={`text-[13px] ${item.win === false ? "text-[#444]" : "text-[#bbb]"}`}>
+                        {item.name}
                       </span>
                     </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-medium ${
+                        item.win === true
+                          ? "bg-emerald-500/10 text-emerald-500"
+                          : item.win === false
+                            ? "bg-[#1a1a1a] text-[#555]"
+                            : "bg-amber-500/10 text-amber-500"
+                      }`}
+                    >
+                      {item.verdict}
+                    </span>
                   </div>
                 ))}
               </div>
 
-              <p className="mt-4 font-mono text-[11px] text-ghost/70">
-                All 7 evaluated in 30 seconds &middot; only 1 needs a real A/B test
-              </p>
+              <div className="mt-4 border-t border-ghost/8 pt-3">
+                <div className="flex items-center gap-3 font-mono text-[10px]">
+                  <span className="text-emerald-500/70">4 ship</span>
+                  <span className="text-[#333]">&middot;</span>
+                  <span className="text-[#FF6B6B]/50">2 killed</span>
+                  <span className="text-[#333]">&middot;</span>
+                  <span className="text-amber-500">1 → real A/B test</span>
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* Punchline */}
+          <div className="mt-10 flex flex-col items-center gap-1.5 text-center">
+            <p className="text-[15px] font-medium tracking-tight text-[#ccc]">
+              7 decisions in 30 seconds.
+            </p>
+            <p className="font-mono text-[11px] text-[#555]">
+              Only <span className="text-amber-500">1</span> needs a real A/B test.
+            </p>
           </div>
         </div>
       </section>

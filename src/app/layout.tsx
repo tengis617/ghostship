@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { getAppUrl } from "@/lib/app-url";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: getAppUrl(),
   title: "ghostship — Phantom users for every pull request",
   description:
     "Every Vercel preview is already an A/B test. It just has zero users. GhostShip sends phantom users to evaluate your preview before you ship.",
