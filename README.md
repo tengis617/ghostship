@@ -83,6 +83,10 @@ Copy `.env.example` for the full list. At minimum, set `BOT_USERNAME` and creden
 | `GITHUB_TOKEN` | GitHub PAT or App credentials |
 | `LINEAR_API_KEY` | Linear API key |
 | `REDIS_URL` | Redis connection string |
+| `SETTINGS_ADMIN_USERNAME` | Basic auth username for `/settings` and settings API |
+| `SETTINGS_ADMIN_PASSWORD` | Basic auth password for `/settings` and settings API |
+| `APP_URL` | Canonical app URL used for metadata |
+| `PREVIEW_BRANCH_ALLOWED_HOSTS` | Comma-separated allowlist for preview proxy targets |
 
 See the [Chat SDK docs](https://chat-sdk.dev/docs) for full platform setup guides.
 
@@ -109,6 +113,7 @@ Test PRs with real webhook traffic by proxying requests from production to a pre
 
 1. Deploy a preview branch to Vercel
 2. Go to `/settings` on the production deployment
-3. Enter the preview branch URL and save
+3. Authenticate with your settings admin credentials
+4. Enter the preview branch URL and save
 
 All webhook requests are proxied until the URL is cleared.

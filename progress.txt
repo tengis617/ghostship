@@ -177,27 +177,13 @@ BATCH 2.75: DOGFOODING (after deploy)
 
 ## Track 9a: Pricing Page (Production Baseline)
    Owner: src/app/pricing/page.tsx (CREATE)
-   [ ] Create 3-tier pricing page at /pricing
-       — Free ($0), Pro ($49/mo, highlighted), Enterprise (Custom)
-       — Dark theme matching landing page aesthetic
-       — Responsive 3-column grid (stacks on mobile)
-       — Pro tier highlighted with "Most Popular" badge
-       — Link back to home
-   [ ] Follow design skills: high-end-visual-design, design-taste-frontend
-   VERIFY: localhost:3000/pricing renders clean pricing page
+   [x] Create 3-tier pricing page at /pricing — done, deployed to production
+   VERIFIED: https://www.ghostship.sh/pricing renders ✓
 
 ## Track 9b: Variant PRs (after 9a deployed to Vercel)
-   [ ] Create branch `pricing-v2` — layout variant (comparison table instead of cards)
-       — Same tiers/features, different presentation
-       — Add annual/monthly toggle
-       — Push + create PR via `gh pr create`
-   [ ] Create branch `pricing-v3` — copy/CTA variant (outcome-focused copy)
-       — Lead with outcomes instead of features
-       — Change CTA text, shift highlight to Enterprise
-       — Add social proof quotes
-       — Push + create PR via `gh pr create`
-   [ ] Note Vercel preview URLs for both PRs
-   VERIFY: 2 PRs open, each with working Vercel preview URL
+   [x] PR #1 — pricing-v3: Outcome-focused copy with testimonials (Vercel preview deployed ✓)
+   [x] PR #2 — pricing-v2: Comparison table layout (Vercel preview deployed ✓)
+   VERIFIED: 2 PRs open, both with successful Vercel preview deployments ✓
 
 ## Track 10: GitHub Adapter Integration
    Owner: src/lib/bot.tsx (MODIFY if needed), .env.local (add GitHub creds)
