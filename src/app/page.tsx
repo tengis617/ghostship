@@ -718,7 +718,7 @@ export default function Home() {
 
           {/* GitHub */}
           <a
-            href="https://github.com/nichochar/ghostship"
+            href="https://github.com/tengis617/ghostship"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2.5 rounded-xl border border-ghost/15 bg-ghost/5 px-5 py-3 font-medium text-ghost transition-colors hover:border-ghost/25 hover:bg-ghost/10"
