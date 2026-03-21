@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
+import { assertSafeScreenshotUrl } from "./url-safety";
 
 async function getBrowser() {
   if (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL) {
@@ -19,11 +20,15 @@ async function getBrowser() {
 }
 
 export async function captureScreenshot(url: string): Promise<Buffer> {
+  const safeUrl = await assertSafeScreenshotUrl(url);
   const browser = await getBrowser();
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 15000 });
+    await page.goto(safeUrl.toString(), {
+      waitUntil: "networkidle2",
+      timeout: 15000,
+    });
     const screenshot = await page.screenshot({ type: "png", fullPage: false });
     return Buffer.from(screenshot);
   } finally {

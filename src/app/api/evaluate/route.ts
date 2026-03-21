@@ -3,6 +3,7 @@ import { captureScreenshot } from "@/lib/screenshot";
 import { analyzePageAndGeneratePersonas } from "@/lib/generate-personas";
 import { evaluatePage } from "@/lib/evaluate";
 import { synthesizeEvaluations } from "@/lib/synthesize";
+import { assertSafeScreenshotUrl, UnsafeUrlError } from "@/lib/url-safety";
 
 // Sequential + Parallel workflow (AI SDK pattern)
 // Step 1: Screenshot (capture)
@@ -21,9 +22,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    new URL(url);
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid URL" }), {
+    await assertSafeScreenshotUrl(url);
+  } catch (error) {
+    const errorMessage =
+      error instanceof UnsafeUrlError ? error.message : "Invalid URL";
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
