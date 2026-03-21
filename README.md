@@ -1,119 +1,149 @@
-# Ghostship
+# GhostShip
 
-A full-featured Chat SDK app based on the upstream Next.js example. It is set up as a standalone app with published npm packages instead of monorepo `workspace:*` dependencies.
+**Phantom users for every pull request.**
 
-## Getting started
+> Every Vercel preview is already an A/B test. It just has zero users.
 
-### Prerequisites
+[ghostship.sh](https://www.ghostship.sh) | [Demo Video](#demo) | [Problem Statement](PROBLEM_STATEMENT.md)
 
-- Node.js 20+
-- pnpm 9+
-- Redis (for state persistence)
-- At least one platform configured (see [Environment variables](#environment-variables))
+---
 
-### Setup
+## What is GhostShip?
 
-1. Install dependencies:
+AI coding tools made building features 10x faster. But learning whether a change is good for users still takes 2-4 weeks of A/B testing. GhostShip closes that gap.
 
-```bash
-pnpm install
+It sends AI-generated "phantom users" to evaluate your pages in 30 seconds — not 3 weeks. Lighthouse for UX.
+
+## Three Capabilities
+
+### 1. Generate Personas on the Fly
+
+Paste any URL. Gemini analyzes the page and generates 5 user personas specific to that page — not generic templates. A cooking site gets food personas. A B2B pricing page gets buyer personas.
+
+### 2. Review a Page from Each Persona's Perspective
+
+Each persona evaluates the page using Gemini's multimodal vision: first impressions, scores, strengths, weaknesses, and suggestions — all from their unique point of view.
+
+### 3. Compare Pages Across Revisions via PR Reviews
+
+When a developer opens a PR, `@ghostship` in Slack or GitHub compares the Vercel preview against production. Five personas vote, and you get a confidence-scored recommendation in 30 seconds.
+
+```
+@ghostship https://my-app-git-feature.vercel.app/pricing
 ```
 
-2. Copy the example environment file and fill in your platform credentials:
+```
+👻 Ghostship Report: /pricing
+Preview wins 4-1 · Confidence: 82%
 
-```bash
-cp .env.example .env.local
+🛍️ Budget-Conscious Buyer — Prefers Preview (high confidence)
+   "The pricing tiers are much clearer. I can immediately see what I get at each level."
+
+💻 Power User — Prefers Preview (high confidence)
+   "The CTA stands out more. I don't have to hunt for the signup button."
+
+💼 Executive — Prefers Production (medium confidence)
+   "The new layout feels busier. I preferred the simpler presentation."
+
+👀 First-Time Visitor — Prefers Preview (high confidence)
+   "The comparison table makes it easy to decide."
+
+♿ Accessibility User — Prefers Preview (high confidence)
+   "Better contrast on the CTA button. The heading hierarchy is more logical."
+
+Summary: Preview wins 4-1. Ship with confidence.
 ```
 
-3. Start the dev server:
+## Tech Stack
 
-```bash
-pnpm dev
+| Layer | Technology |
+|-------|-----------|
+| AI | Gemini 2.5 Flash (multimodal vision + structured output) |
+| AI SDK | Vercel AI SDK (`generateText`, `Output.object`, zod schemas) |
+| Bot Framework | Vercel Chat SDK (Slack + GitHub adapters) |
+| Screenshots | Puppeteer (`puppeteer-core` + `@sparticuz/chromium`) |
+| Framework | Next.js 16 (App Router) |
+| Deployment | Vercel |
+
+## How It Works
+
+```
+URL mentioned in Slack/GitHub
+  │
+  ├── Screenshot both URLs (Puppeteer, parallel)
+  │
+  ├── 5 Persona Evaluations (Gemini, parallel)
+  │   ├── Budget-Conscious Buyer
+  │   ├── Power User / Developer
+  │   ├── Non-Technical Executive
+  │   ├── First-Time Visitor
+  │   └── Accessibility-Focused User
+  │
+  ├── Aggregate: votes, confidence, summary
+  │
+  └── Post report card to Slack thread / GitHub PR comment
 ```
 
-The app runs at `http://localhost:3000`. Platform webhooks should point to `/api/webhooks/{platform}` (e.g. `/api/webhooks/slack`).
-
-> For local development with real webhooks, use a tunneling tool like [ngrok](https://ngrok.com) or [`localtunnel`](https://github.com/localtunnel/localtunnel).
-
-## What it demonstrates
-
-- **Event handlers** — mentions, thread subscriptions, pattern matching, reactions
-- **AI mode** — `@mention AI` to enable streaming LLM responses via the Vercel AI SDK
-- **Cards** — interactive JSX-based cards with buttons, dropdowns, and fields
-- **Modals** — form dialogs with text inputs, validation, and private metadata
-- **Actions** — button clicks and dropdown selections with response handlers
-- **Slash commands** — platform-specific command handling
-- **Ephemeral messages** — user-only visible messages with DM fallback
-- **DMs** — programmatic direct message initiation
-- **File uploads** — attachment detection and display
-- **Multi-platform** — same bot logic across all six platforms
-
-## Project structure
+## Project Structure
 
 ```
 src/
 ├── app/
-│   ├── api/
-│   │   ├── webhooks/[platform]/route.ts   # Main webhook entry point
-│   │   ├── slack/install/                  # Slack OAuth flow
-│   │   └── discord/gateway/route.ts        # Discord gateway cron
-│   ├── settings/page.tsx                   # Preview branch config UI
-│   └── page.tsx                            # Home page
+│   ├── page.tsx                          # Landing page
+│   ├── pricing/page.tsx                  # Demo pricing page
+│   └── api/
+│       └── webhooks/[platform]/route.ts  # Slack + GitHub webhook handler
 ├── lib/
-│   ├── bot.tsx                             # Bot logic and handlers
-│   ├── adapters.ts                         # Adapter initialization
-│   └── recorder.ts                         # Webhook recording system
-└── middleware.ts                            # Preview branch proxy
+│   ├── agent.ts                          # Orchestrator: runGhostship(), reviewPage(), runGhostshipForPR()
+│   ├── bot.tsx                           # Chat SDK bot handlers
+│   ├── evaluate.ts                       # Gemini multimodal evaluation (single-page + A/B)
+│   ├── personas.ts                       # 5 persona definitions + types
+│   ├── screenshot.ts                     # Puppeteer screenshot service
+│   └── adapters.ts                       # Slack + GitHub adapter setup
+└── scripts/
+    └── evaluate-page.ts                  # CLI: evaluate any URL with all 5 personas
 ```
 
-## Environment variables
+## Quick Start
 
-Copy `.env.example` for the full list. At minimum, set `BOT_USERNAME` and credentials for one platform:
+```bash
+pnpm install
+cp .env.example .env.local
+# Fill in: GEMINI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY,
+#          SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET
+pnpm dev
+```
+
+### Try the CLI
+
+```bash
+npx tsx scripts/evaluate-page.ts https://vercel.com
+```
+
+### Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `BOT_USERNAME` | Bot display name |
-| `SLACK_BOT_TOKEN` | Slack bot token (single-workspace mode) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini API key (from Google AI Studio) |
+| `SLACK_BOT_TOKEN` | Slack bot token |
 | `SLACK_SIGNING_SECRET` | Slack request verification |
-| `TEAMS_APP_ID` | Teams app ID |
-| `TEAMS_APP_PASSWORD` | Teams app password |
-| `GOOGLE_CHAT_CREDENTIALS` | Google Chat service account JSON |
-| `DISCORD_BOT_TOKEN` | Discord bot token |
-| `DISCORD_PUBLIC_KEY` | Discord interaction verification key |
-| `GITHUB_TOKEN` | GitHub PAT or App credentials |
-| `LINEAR_API_KEY` | Linear API key |
-| `REDIS_URL` | Redis connection string |
-| `SETTINGS_ADMIN_USERNAME` | Basic auth username for `/settings` and settings API |
-| `SETTINGS_ADMIN_PASSWORD` | Basic auth password for `/settings` and settings API |
-| `APP_URL` | Canonical app URL used for metadata |
-| `PREVIEW_BRANCH_ALLOWED_HOSTS` | Comma-separated allowlist for preview proxy targets |
+| `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret (for PR reviews) |
+| `GITHUB_APP_ID` | GitHub App ID |
+| `GITHUB_PRIVATE_KEY` | GitHub App private key |
 
-See the [Chat SDK docs](https://chat-sdk.dev/docs) for full platform setup guides.
+## Dogfooding
 
-## Recording and replay
+GhostShip evaluates its own PRs. We created variant pricing pages and used GhostShip to compare them:
 
-The app includes a recording system for capturing production webhook interactions and converting them into replay tests.
+- [PR #1 — Outcome-focused copy variant](https://github.com/tengis617/ghostship/pull/1)
+- [PR #2 — Comparison table layout variant](https://github.com/tengis617/ghostship/pull/2)
 
-```bash
-# Enable recording in your environment
-RECORDING_ENABLED=true
+## Why This Matters
 
-# List recorded sessions
-pnpm recording:list
+- **70-90% of A/B tests** show no statistically significant winner. Most wait time is wasted.
+- **SimAB research** (2026) showed LLM-based simulation achieves 67% accuracy overall, 83% on high-confidence predictions — vs 50% (coin flip) for teams shipping without testing.
+- GhostShip is a **pre-filter**, not a replacement for real A/B testing. It tells you which experiments are worth running.
 
-# Export a session
-pnpm recording:export <session-id>
-```
+---
 
-See `packages/integration-tests/fixtures/replay/README.md` for the full workflow.
-
-## Preview branch testing
-
-Test PRs with real webhook traffic by proxying requests from production to a preview deployment:
-
-1. Deploy a preview branch to Vercel
-2. Go to `/settings` on the production deployment
-3. Authenticate with your settings admin credentials
-4. Enter the preview branch URL and save
-
-All webhook requests are proxied until the URL is cleared.
+Built for [Zero to Agent: Vercel x DeepMind Hackathon SF](https://cerebralvalley.ai/e/zero-to-agent-sf) (March 2026)
