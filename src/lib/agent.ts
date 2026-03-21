@@ -1,14 +1,13 @@
 import { ToolLoopAgent, tool } from "ai";
 import type { StreamChunk } from "chat";
-import { google } from "@ai-sdk/google";
 import { z } from "zod";
+import { getAgentModel } from "./ai-models";
 import { captureScreenshot, parseVercelPreviewUrl } from "./screenshot";
 import { evaluateAsPersona, evaluatePage } from "./evaluate";
+import { analyzePageAndGeneratePersonas } from "./generate-personas";
 import {
-  personas,
   type GhostshipReport,
   type PageEvaluation,
-  type PageReviewReport,
   type Persona,
   type PersonaResult,
 } from "./personas";
@@ -19,16 +18,10 @@ export interface PrContext {
   prNumber: number;
 }
 
-// Thread-like object that supports streaming plan blocks
+// Thread-like object that supports posting streaming plan blocks
 export interface StreamableThread {
   id: string;
-  adapter: {
-    stream?: (
-      threadId: string,
-      stream: AsyncIterable<string | StreamChunk>,
-      options?: { taskDisplayMode?: "timeline" | "plan" }
-    ) => Promise<unknown>;
-  };
+  post(message: AsyncIterable<string | StreamChunk>): Promise<unknown>;
 }
 
 // ── Confidence & recommendations ──────────────────────────────────────
@@ -285,17 +278,12 @@ async function streamPlanBlock<T>(
   formatOutput: (persona: Persona, result: T) => string,
   planTitle: string
 ): Promise<void> {
-  if (!thread?.adapter?.stream) {
-    console.log("[ghostship] no adapter.stream — skipping plan block");
+  if (!thread) {
     return;
   }
 
-  console.log("[ghostship] streaming plan block with", entries.length, "tasks");
   const generator = streamEvaluationProgress(entries, formatOutput, planTitle);
-  await thread.adapter.stream(thread.id, generator, {
-    taskDisplayMode: "plan",
-  });
-  console.log("[ghostship] plan block stream complete");
+  await thread.post(generator);
 }
 
 // ── Agent factory ─────────────────────────────────────────────────────
@@ -303,27 +291,32 @@ async function streamPlanBlock<T>(
 const VERCEL_REGEX =
   /https:\/\/[^\s)"<>]+?\.vercel\.app(?:\/[^\s)"<>]*)?/i;
 
-const AGENT_INSTRUCTIONS = `You are GhostShip 👻 — an AI agent that evaluates web pages using 5 synthetic personas.
+const AGENT_INSTRUCTIONS = `You are GhostShip 👻 — an AI orchestrator that evaluates web pages using 5 page-specific synthetic personas.
 
-You can:
-• Compare two page versions (A/B test) — use compare_pages
-• Review a single page — use review_page
-• Analyze a GitHub PR — use get_pr_changed_files + find_vercel_preview_url to find what changed, then compare_pages
-• Chat naturally about UX, design, and web development
+CRITICAL RULES:
+- When the user provides ANY URL or mentions a PR, you MUST use your tools. NEVER simulate, fake, or manually write an evaluation.
+- You are NOT a UX reviewer yourself. You are an orchestrator that calls tools to run real evaluations. Your tools do the actual work.
+- If a tool fails, report the error. Do NOT fall back to writing a manual review.
 
-When the user gives you a URL or asks you to evaluate something, use your tools.
-When they give you a GitHub PR URL (e.g. https://github.com/owner/repo/pull/42), extract owner/repo/number and use your GitHub tools.
-Otherwise, just have a helpful conversation.
+Your tools:
+• compare_pages — A/B test two URLs with 5 page-specific AI personas (requires preview_url AND production_url)
+• review_page — single page UX review with 5 page-specific AI personas (requires url)
+• get_pr_changed_files — get files changed in a GitHub PR
+• find_vercel_preview_url — find Vercel preview URL from PR comments
+• derive_production_url — deterministically convert a Vercel preview URL into its production URL
 
-Deriving production URLs from Vercel preview URLs:
-  "project-git-branch-team.vercel.app" → "project-team.vercel.app"
-  "project-git-branch.vercel.app" → "project.vercel.app"
+Workflows:
+1. User gives a Vercel preview URL → call derive_production_url, then call compare_pages
+2. User gives a GitHub PR URL (github.com/owner/repo/pull/N) → extract owner/repo/N, call get_pr_changed_files + find_vercel_preview_url in parallel, then compare_pages with the right page path
+3. User gives a non-Vercel URL → call review_page
+4. User on a GitHub PR thread with no URL → use PR context hint, call get_pr_changed_files + find_vercel_preview_url
+5. User asks a question without URLs → chat normally (this is the ONLY case where you don't use tools)
 
 Mapping Next.js source files to page routes:
   src/app/page.tsx → /
   src/app/pricing/page.tsx → /pricing
 
-After running an evaluation, present the results clearly with the verdict, recommendation, and each persona's take. Use markdown formatting.
+After a tool returns evaluation results, present them clearly with the verdict, recommendation, and each persona's take. Use markdown formatting.
 Keep non-evaluation responses concise.`;
 
 /**
@@ -332,7 +325,7 @@ Keep non-evaluation responses concise.`;
  */
 export function createGhostshipAgent(thread?: StreamableThread) {
   return new ToolLoopAgent({
-    model: google("gemini-3-flash-preview"),
+    model: getAgentModel(),
     instructions: AGENT_INSTRUCTIONS,
     experimental_context: { thread },
     tools: {
@@ -397,40 +390,70 @@ export function createGhostshipAgent(thread?: StreamableThread) {
         },
       }),
 
+      derive_production_url: tool({
+        description:
+          "Deterministically derive the production URL for a Vercel preview URL.",
+        inputSchema: z.object({
+          preview_url: z
+            .string()
+            .url()
+            .describe("Full Vercel preview URL to convert"),
+        }),
+        execute: async ({ preview_url }) => {
+          const derived = parseVercelPreviewUrl(preview_url);
+          if (!derived.productionUrl) {
+            return {
+              previewUrl: preview_url,
+              productionUrl: null,
+              pagePath: derived.pagePath,
+              error:
+                "Could not derive a production URL from that preview deployment",
+            };
+          }
+
+          return derived;
+        },
+      }),
+
       compare_pages: tool({
         description:
           "Screenshot two versions of a page (e.g. preview vs production) and run 5 persona evaluations comparing them. Shows live progress. Expensive (~30s).",
         inputSchema: z.object({
           preview_url: z
             .string()
+            .url()
             .describe(
               "Full URL of the new/preview version, e.g. https://proj-git-feat.vercel.app/pricing"
             ),
           production_url: z
             .string()
+            .url()
             .describe(
               "Full URL of the current/production version, e.g. https://proj.vercel.app/pricing"
             ),
         }),
         execute: async ({ preview_url, production_url }, options) => {
-          console.log("[ghostship] compare_pages called:", { preview_url, production_url });
           const ctx = options?.experimental_context as
             | { thread?: StreamableThread }
             | undefined;
-          console.log("[ghostship] thread context:", ctx?.thread ? "available" : "none", "adapter.stream:", typeof ctx?.thread?.adapter?.stream);
 
           // Capture screenshots in parallel
           const [previewPng, productionPng] = await Promise.all([
             captureScreenshot(preview_url),
             captureScreenshot(production_url),
           ]);
-          console.log("[ghostship] screenshots captured:", previewPng.length, "bytes,", productionPng.length, "bytes");
+
+          const analysis = await analyzePageAndGeneratePersonas(
+            previewPng,
+            preview_url
+          );
+          const generatedPersonas = analysis.personas;
 
           // Start all persona evaluations (promises created but not awaited)
-          const promises = personas.map((p) =>
+          const promises = generatedPersonas.map((p) =>
             evaluateAsPersona(p, productionPng, previewPng)
           );
-          const entries = personas.map((p, i) => ({
+          const entries = generatedPersonas.map((p, i) => ({
             persona: p,
             promise: promises[i],
           }));
@@ -449,6 +472,8 @@ export function createGhostshipAgent(thread?: StreamableThread) {
           const report = buildReport(results, preview_url, production_url);
 
           return {
+            pageType: analysis.pageType,
+            audience: analysis.description,
             verdict: `${report.winner === "preview" ? "This PR" : report.winner === "production" ? "Current version" : "Inconclusive"} wins ${Math.max(report.preferenceSplit.preview, report.preferenceSplit.production)}–${Math.min(report.preferenceSplit.preview, report.preferenceSplit.production)}`,
             confidence: `${report.confidence}%`,
             recommendation: report.recommendation,
@@ -467,7 +492,7 @@ export function createGhostshipAgent(thread?: StreamableThread) {
         description:
           "Screenshot a single page and run 5 persona UX evaluations. Shows live progress. Expensive (~30s).",
         inputSchema: z.object({
-          url: z.string().describe("Full URL of the page to review"),
+          url: z.string().url().describe("Full URL of the page to review"),
         }),
         execute: async ({ url }, options) => {
           const ctx = options?.experimental_context as
@@ -475,10 +500,12 @@ export function createGhostshipAgent(thread?: StreamableThread) {
             | undefined;
 
           const png = await captureScreenshot(url);
+          const analysis = await analyzePageAndGeneratePersonas(png, url);
+          const generatedPersonas = analysis.personas;
 
           // Start all persona evaluations
-          const promises = personas.map((p) => evaluatePage(p, png, url));
-          const entries = personas.map((p, i) => ({
+          const promises = generatedPersonas.map((p) => evaluatePage(p, png, url));
+          const entries = generatedPersonas.map((p, i) => ({
             persona: p,
             promise: promises[i],
           }));
@@ -501,6 +528,8 @@ export function createGhostshipAgent(thread?: StreamableThread) {
 
           return {
             url,
+            pageType: analysis.pageType,
+            audience: analysis.description,
             averageScore: `${averageScore.toFixed(1)}/10`,
             summary,
             personas: evaluations.map((e) => ({
