@@ -26,12 +26,24 @@ import {
 import { createGhostshipAgent, type PrContext } from "./agent";
 import { buildAdapters } from "./adapters";
 
-const state = process.env.REDIS_URL
-  ? createRedisState({
+function createStateAdapter() {
+  if (process.env.REDIS_URL) {
+    return createRedisState({
       url: process.env.REDIS_URL,
       keyPrefix: "ghostship-webhooks",
-    })
-  : createMemoryState();
+    });
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "REDIS_URL is required in production for durable Chat SDK state"
+    );
+  }
+
+  return createMemoryState();
+}
+
+const state = createStateAdapter();
 const adapters = buildAdapters();
 
 // Define thread state type
@@ -47,6 +59,8 @@ export const bot = new Chat<typeof adapters, ThreadState>({
   adapters,
   state,
   logger: "debug",
+  fallbackStreamingPlaceholderText: null,
+  onLockConflict: "force",
 });
 
 // Parse GitHub thread ID → PR context (github:owner/repo:prNumber)
@@ -677,7 +691,7 @@ bot.onNewMessage(/help/i, async (thread, message) => {
 
 // Handle messages in subscribed threads — continue the conversation
 bot.onSubscribedMessage(async (thread, message) => {
-  if (!(thread.adapter.name === "telegram" || message.isMention)) {
+  if (!message.text.trim()) {
     return;
   }
 
