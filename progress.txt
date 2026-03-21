@@ -1,170 +1,197 @@
 GHOSTSHIP — PROGRESS CHECKLIST
 ================================
-Instructions: Mark tasks [x] when complete. Add timestamps.
-Agents: update this file after completing each task.
+Instructions for AI agents:
+- Mark tasks [x] when complete, add timestamp: [x] 10:45 AM — description
+- Update NOTES/BLOCKERS section if you hit issues
+- Do NOT modify files outside your assigned track
+- Run verification command after completing each track
+- If verification fails, fix before moving on
 
 =====================================
-PHASE 0: ACCOUNT SETUP & SCAFFOLD
+PHASE 0: SETUP (DONE)
 =====================================
-Target: 10:00 - 10:45
+[x] Next.js app scaffolded (App Router, TypeScript)
+[x] Chat SDK installed with all adapters (v4.20.2)
+[x] Slack adapter configured (bot token + signing secret)
+[x] Slack app created with manifest (app_mention events, interactivity)
+[x] Gemini API key obtained
+[x] ngrok tunnel active for local webhook delivery
+[x] Bot logic running (src/lib/bot.tsx — currently example app)
+[x] .env.local in .gitignore
 
-## Accounts & API Keys
-[ ] Get Gemini API key from Google AI Studio
-[ ] Sign up for ScreenshotOne, get API key
-[ ] Create Slack App (api.slack.com/apps)
-[ ] Configure Slack bot scopes: app_mentions:read, chat:write, files:write
-[ ] Enable Slack Event Subscriptions
-[ ] Install Slack app to workspace, grab bot token + signing secret
-[ ] Confirm Vercel account ready
-[ ] Create .env.local with all keys (GEMINI_API_KEY, SCREENSHOTONE_API_KEY, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET)
-
-## Scaffold
-[ ] Initialize Next.js app (typescript, tailwind, app router)
-[ ] Install core deps: ai, @ai-sdk/google, zod
-[ ] Verify dev server runs (npm run dev)
-[ ] Confirm .env.local is in .gitignore
-[ ] Create directory structure: lib/, components/, app/api/evaluate/, app/api/slack/
+## Pre-Batch 1 Setup
+[x] 10:40 AM — Installed deps: @ai-sdk/google, zod, puppeteer-core, @sparticuz/chromium
+[x] 10:41 AM — Gemini API key verified: gemini-2.5-flash responds correctly
+[x] 10:41 AM — Puppeteer verified: local Chrome screenshot of vercel.com → 488KB PNG
+[x] 10:42 AM — Added GOOGLE_GENERATIVE_AI_API_KEY to .env.local (Vercel AI SDK expects this env var name)
+[x] 10:42 AM — Build passes with new deps
+[x] 10:42 AM — Created directories: src/components, src/app/api/evaluate
 
 =====================================
-PHASE 1: CORE PIPELINE
+BATCH 1: PARALLEL TRACKS (all independent)
 =====================================
-Target: 10:45 - 12:15
+These 4 tracks have NO dependencies on each other.
+They CAN and SHOULD run simultaneously.
+Each track owns specific files — do not touch files outside your track.
 
-## 1a. Screenshot Service — lib/screenshot.ts
-[ ] Implement captureScreenshot(url) → Buffer via ScreenshotOne API
-[ ] Implement parseVercelPreviewUrl() to derive production URL
-[ ] Test: capture screenshot of a public URL, verify PNG returned
-[ ] Test: URL parsing with Vercel preview URL patterns
+## Track 1: Types + Personas [Agent A]
+   Owner: src/lib/personas.ts (CREATE)
+   [ ] Define Persona type: { id, name, emoji, age, background, goals, evaluationCriteria, behaviorPattern }
+   [ ] Define PersonaResult type: { personaId, personaName, personaEmoji, preference, confidence, rationale, productionPros, productionCons, previewPros, previewCons }
+   [ ] Define GhostshipReport type: { winner, confidence, preferenceSplit, personas, summary, previewUrl, productionUrl }
+   [ ] Implement 5 personas with detailed system prompts:
+       [ ] Budget-Conscious Buyer
+       [ ] Power User / Developer
+       [ ] Non-Technical Executive
+       [ ] First-Time Visitor
+       [ ] Accessibility-Focused User
+   VERIFY: pnpm typecheck passes with no errors in personas.ts
 
-## 1b. Personas — lib/personas.ts
-[ ] Define Persona type (id, name, emoji, age, background, goals, evaluationCriteria, behaviorPattern)
-[ ] Define PersonaResult type (preference, confidence, rationale, pros/cons)
-[ ] Define GhostshipReport type (winner, confidence, preferenceSplit, personas, summary)
-[ ] Implement 5 personas: Budget Buyer, Power User, Executive, First-Time Visitor, Accessibility User
+## Track 2: Screenshot Service [Agent B]
+   Owner: src/lib/screenshot.ts (CREATE)
+   Deps: puppeteer-core, @sparticuz/chromium (no external API key needed)
+   [ ] Implement captureScreenshot(url: string): Promise<Buffer>
+       — uses puppeteer-core with @sparticuz/chromium for serverless
+       — local dev: uses locally installed Chrome/Chromium
+       — production (Vercel): uses @sparticuz/chromium binary
+       — viewport 1280x800, format=png, wait for network idle
+       — returns PNG buffer
+   [ ] Implement parseVercelPreviewUrl(previewUrl: string): { previewUrl, productionUrl, pagePath }
+       — pattern: {project}-git-{branch}.vercel.app → {project}.vercel.app
+       — also handle: {project}-{hash}-{team}.vercel.app pattern
+       — preserve the path (e.g., /pricing)
+       — fallback: return null productionUrl if pattern doesn't match
+   [ ] Handle Chrome path detection:
+       — macOS dev: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+       — Vercel serverless: @sparticuz/chromium.executablePath()
+       — detect environment via process.env.AWS_LAMBDA_FUNCTION_NAME or similar
+   VERIFY: test script captures screenshot of https://vercel.com, saves PNG to /tmp/test.png, file > 10KB
+   VERIFY: parseVercelPreviewUrl("https://my-app-git-new-cta.vercel.app/pricing") returns correct URLs
 
-## 1c. Gemini Evaluation — lib/evaluate.ts
-[ ] Implement evaluateAsPersona(persona, productionPng, previewPng) → PersonaResult
-[ ] Set up Vercel AI SDK with @ai-sdk/google provider
-[ ] Define zod schema for structured output
-[ ] Craft system prompt template with persona injection
-[ ] Test: single persona evaluation with 2 test screenshots
+## Track 3: Gemini Evaluation [Agent C]
+   Owner: src/lib/evaluate.ts (CREATE)
+   [ ] Import types from personas.ts (Persona, PersonaResult)
+   [ ] Set up Vercel AI SDK with @ai-sdk/google provider (gemini-2.5-pro model)
+   [ ] Define zod schema matching PersonaResult type
+   [ ] Implement evaluateAsPersona(persona: Persona, productionPng: Buffer, previewPng: Buffer): Promise<PersonaResult>
+       — builds system prompt from persona fields
+       — sends both PNGs as image parts
+       — uses generateObject() for structured output
+       — returns typed PersonaResult
+   VERIFY: test script evaluates 1 persona with 2 test PNGs, prints valid PersonaResult JSON
 
-## 1d. Agent Orchestrator — lib/agent.ts
-[ ] Implement runGhostship(previewUrl, productionUrl?) → GhostshipReport
-[ ] URL parsing + production URL derivation
-[ ] Parallel screenshot capture (both URLs)
-[ ] Parallel persona evaluations (5 concurrent Gemini calls)
-[ ] Aggregation: vote count, winner, confidence score, summary
-[ ] Test: full pipeline end-to-end with real URLs, all 5 personas return valid JSON
-[ ] Verify: total pipeline time < 30 seconds
-
-=====================================
-PHASE 2: WEB UI
-=====================================
-Target: 12:15 - 1:15
-
-## 2a. API Route — app/api/evaluate/route.ts
-[ ] POST endpoint: accepts { previewUrl, productionUrl? }
-[ ] Calls runGhostship(), returns JSON result
-[ ] Error handling: validation, try/catch, meaningful error responses
-[ ] Test: curl POST to localhost, verify JSON response
-
-## 2b. Web Interface — app/page.tsx
-[ ] Input form: preview URL field + optional production URL field
-[ ] "Deploy Phantom Users" submit button
-[ ] Loading state with progress indicators
-[ ] Wire up form submission to /api/evaluate
-
-## 2c. Report Card — components/report-card.tsx
-[ ] Header: winner badge + confidence score + vote split visualization
-[ ] Per-persona cards: emoji + name + preference badge + rationale quote
-[ ] Summary section with recommendation text
-[ ] Responsive layout
-
-## 2d. Styling
-[ ] Dark theme with Tailwind
-[ ] Ghost/phantom aesthetic (subtle, professional)
-[ ] Polish: transitions, hover states, typography
-[ ] Mobile-friendly
-
-## 2e. Verify Web UI
-[ ] Open localhost, paste URL, click evaluate
-[ ] Report card renders with all 5 personas
-[ ] Total UX < 30 seconds from submit to results
-[ ] Error states display correctly
-
-=====================================
-PHASE 3: SLACK BOT
-=====================================
-Target: 1:15 - 2:30
-
-## 3a. Dependencies
-[ ] Install: @vercel/chat-sdk @chat-adapter/slack (or chosen Slack approach)
-
-## 3b. Slack Handler — app/api/slack/route.ts
-[ ] Handle Slack URL verification challenge
-[ ] Parse app_mention events
-[ ] Extract URL from mention text
-[ ] Post initial "boarding your preview..." loading message to thread
-[ ] Call runGhostship() with parsed URL
-[ ] Format results as Slack Block Kit message
-[ ] Post full report card to same Slack thread
-[ ] Handle errors gracefully (post error message to Slack)
-
-## 3c. Block Kit Formatting
-[ ] Header block: "Ghostship Report: /path"
-[ ] Per-persona sections: emoji + name + preference + rationale
-[ ] Dividers between sections
-[ ] Summary block with recommendation
-
-## 3d. Deploy & Wire Up
-[ ] Deploy to Vercel with env vars configured
-[ ] Set Slack Event Subscription URL to production endpoint
-[ ] Verify Slack events flow through to handler
-[ ] Test: @ghostship in Slack → loading message → full report in < 30s
+## Track 7: Web UI Shell [Agent D]
+   Owner: src/app/page.tsx (MODIFY), src/components/report-card.tsx (CREATE)
+   [ ] Replace example page.tsx with GhostShip landing page + input form
+       — Hero: "Phantom users for every pull request"
+       — Input: preview URL field + optional production URL field
+       — Button: "Deploy Phantom Users"
+       — Loading state placeholder
+   [ ] Create report-card.tsx component (can use mock data initially)
+       — Header: winner badge + confidence + vote split
+       — Per-persona cards: emoji + name + preference badge + rationale
+       — Summary section
+   [ ] Dark theme, clean design with Tailwind
+   VERIFY: localhost:3000 shows GhostShip page with input form
 
 =====================================
-PHASE 4: POLISH & DEMO PREP
+BATCH 2: SEQUENTIAL TRACKS (after Batch 1)
 =====================================
-Target: 2:30 - 4:00
+These depend on Batch 1 being complete.
 
-## Error Handling
-[ ] Screenshot API failure → graceful error message
-[ ] Single persona Gemini failure → return partial results
-[ ] URL parsing failure → prompt user for both URLs
-[ ] Global timeout (60s) → return whatever results are ready
+## Track 4: Orchestrator [after Tracks 1, 2, 3]
+   Owner: src/lib/agent.ts (CREATE)
+   [ ] Import: captureScreenshot, parseVercelPreviewUrl from screenshot.ts
+   [ ] Import: evaluateAsPersona from evaluate.ts
+   [ ] Import: personas, GhostshipReport from personas.ts
+   [ ] Implement runGhostship(previewUrl: string, productionUrl?: string): Promise<GhostshipReport>
+       [ ] Parse/derive URLs using parseVercelPreviewUrl
+       [ ] Capture both screenshots in parallel: Promise.all([capture(preview), capture(production)])
+       [ ] Run 5 persona evaluations in parallel: Promise.all(personas.map(...))
+       [ ] Aggregate results:
+           — Count votes (production vs preview)
+           — Determine winner (or "inconclusive" if 3-2 split with low confidence)
+           — Compute confidence score (0-100)
+           — Generate summary string
+       [ ] Return GhostshipReport
+   VERIFY: node test script with 2 real URLs → prints full GhostshipReport → completes in <45s
 
-## Demo Project
-[ ] Create/identify a Vercel project for demo
-[ ] Create a PR with a visible visual change
-[ ] Verify Vercel preview URL works
-[ ] Run GhostShip against demo URLs 3+ times, confirm quality
+## Track 5: Bot Logic [after Track 4]
+   Owner: src/lib/bot.tsx (MODIFY — replace example handlers)
+   [ ] Add URL regex pattern to detect URLs in mentions
+   [ ] Add onNewMention handler for GhostShip:
+       — When @ghostship is mentioned with a URL:
+         1. Post loading message: "Boarding your preview..."
+         2. Call runGhostship(url)
+         3. Format results as Chat SDK Card (JSX)
+         4. Post report card to thread
+       — When @ghostship is mentioned without a URL:
+         1. Post help message explaining usage
+   [ ] Format report card using Chat SDK JSX components:
+       — Card with title "Ghostship Report: /path"
+       — Section per persona with emoji, preference, rationale
+       — Divider
+       — Summary section
+   [ ] Error handling: catch pipeline errors, post friendly error message
+   [ ] Remove or keep example handlers (keep if they don't interfere)
+   VERIFY: @ghostship <url> in Slack → loading message → report card in thread
 
-## Landing Page Polish
-[ ] Hero section: "Phantom users for every pull request"
-[ ] Brief explanation of how it works
-[ ] Slack interaction mockup/screenshot
-[ ] "Add to Slack" button or setup instructions
-[ ] Clean, polished design (Vercel hackathon — design matters)
+## Track 6: Web API Route [after Track 4]
+   Owner: src/app/api/evaluate/route.ts (CREATE)
+   [ ] POST handler: parse { previewUrl, productionUrl? } from request body
+   [ ] Validate: previewUrl is required, is a valid URL
+   [ ] Call runGhostship(previewUrl, productionUrl)
+   [ ] Return JSON response with GhostshipReport
+   [ ] Error handling: 400 for invalid input, 500 for pipeline errors
+   VERIFY: curl -X POST localhost:3000/api/evaluate -H 'Content-Type: application/json' -d '{"previewUrl":"https://vercel.com"}' → valid JSON
 
 =====================================
-PHASE 5: SUBMIT
+BATCH 3: POLISH & SHIP
 =====================================
-Target: 4:00 - 5:00
 
-## Final Deploy & Test
-[ ] vercel deploy --prod
-[ ] Verify Slack bot works on production
-[ ] Verify web UI works on production
-[ ] Run full demo flow 2x end-to-end
+## Wire Web UI to API [after Tracks 6, 7]
+   Owner: src/app/page.tsx (MODIFY)
+   [ ] Connect form submission to POST /api/evaluate
+   [ ] Stream/display results using report-card component
+   [ ] Loading state: show progress as evaluation runs
+   [ ] Error state: display errors from API
+   VERIFY: paste URL in browser → click button → report card renders
+
+## Error Handling Hardening
+   [ ] Puppeteer/screenshot failure → graceful error in both Slack and web
+   [ ] Single persona Gemini failure → return partial results (4/5 ok)
+   [ ] URL parsing failure → prompt user for both URLs explicitly
+   [ ] Global timeout (60s) → return whatever results are ready
+
+## Demo Prep
+   [ ] Identify/create a Vercel project with a deployed PR preview
+   [ ] PR should change something visually obvious (CTA, headline, layout)
+   [ ] Run GhostShip against demo URLs 3+ times, confirm consistent quality
+   [ ] Screen-record the Slack demo flow (backup)
+
+## Deploy
+   [ ] Deploy to Vercel: vercel deploy --prod
+   [ ] Set env vars in Vercel dashboard
+   [ ] Update Slack event subscription URL to production
+   [ ] Test: @ghostship in Slack on production → works
+   [ ] Test: production web URL → works
 
 ## Submission
-[ ] Screen-record Slack demo flow (backup recording)
-[ ] Write README.md (problem, solution, tech stack, demo link)
-[ ] Final PROBLEM_STATEMENT.md review
-[ ] Submit before 5:00 PM
+   [ ] README.md: problem, solution, tech stack, demo link
+   [ ] Final review of PROBLEM_STATEMENT.md
+   [ ] Submit before 5:00 PM
 
 =====================================
 NOTES / BLOCKERS
 =====================================
-(Add issues, pivots, and decisions here as they come up)
+- .env.local contains real API keys — this is a PUBLIC repo. Do NOT commit .env.local.
+  .gitignore covers .env*.local but double-check before every commit.
+- Need to install before Batch 1: @ai-sdk/google, zod, puppeteer-core, @sparticuz/chromium
+- Screenshot approach: LOCAL Puppeteer (puppeteer-core + @sparticuz/chromium). No external API.
+  - Dev: uses local Chrome binary
+  - Prod (Vercel): uses @sparticuz/chromium (~50MB, fits in serverless)
+  - Fallback: if Puppeteer fails on Vercel, can swap to free screenshot API later
+- Chat SDK bot.tsx currently has ~840 lines of example handlers. GhostShip handlers
+  need to be added. Decide: replace all example handlers, or add alongside them.
+- The Vercel AI SDK agent import in bot.tsx uses "anthropic/claude-4.5-sonnet" for AI mode.
+  GhostShip evaluation will use Gemini via @ai-sdk/google — these are separate concerns.

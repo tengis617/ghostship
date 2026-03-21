@@ -2,141 +2,186 @@
 
 **Phantom users for every pull request.**
 
-## Context
+---
 
-Building a Slack bot + web UI for the Vercel x DeepMind hackathon (submission 5PM today). GhostShip sends AI-powered "phantom users" to evaluate Vercel preview deployments vs production, giving teams directional A/B test signal in 30 seconds instead of 2-4 weeks.
+## Current State (as of ~10:30 AM)
 
-**Constraints:** Solo, 7 hours, no accounts/keys set up yet.
-**Stack:** Next.js + Vercel AI SDK + Gemini + Vercel Chat SDK (Slack adapter) + ScreenshotOne.
-**Build order:** Core pipeline → Web UI (validates pipeline) → Slack bot (same pipeline, different interface).
+Phase 0 is DONE. The scaffold is far more complete than originally planned:
+
+- **Next.js app** running with Chat SDK fully wired
+- **Slack adapter** configured and connected (bot token + signing secret in .env.local)
+- **Slack app** created with manifest (app_mention events, interactivity enabled)
+- **Gemini API key** obtained
+- **ngrok tunnel** active for local Slack webhook delivery
+- **Bot logic** in `src/lib/bot.tsx` — currently the Chat SDK example app, needs to be replaced with GhostShip logic
+- **Webhook route** at `src/app/api/webhooks/[platform]/route.ts` — already handles Slack events
+
+### What's NOT done yet
+- Screenshot service (using local Puppeteer via `puppeteer-core` + `@sparticuz/chromium` — no external API needed)
+- GhostShip core pipeline (personas, evaluation, orchestrator)
+- GhostShip-specific bot handlers in bot.tsx
+- Web UI (page.tsx is still the example landing page)
+- PROBLEM_STATEMENT.md rewrite (drafted, needs to be applied)
 
 ---
 
-## Phase 0: Account Setup & Scaffold (10:00 - 10:45)
+## Parallelization Strategy
 
-### 0a. Accounts & API Keys (~20 min, do in parallel)
-1. **Google AI Studio** → Gemini API key
-2. **ScreenshotOne** → sign up, get API key (free tier: 100 screenshots)
-3. **Slack** → create Slack App
-   - Bot Token Scopes: `app_mentions:read`, `chat:write`, `files:write`
-   - Enable Event Subscriptions (URL set after deploy)
-   - Install to workspace → grab `SLACK_BOT_TOKEN` + `SLACK_SIGNING_SECRET`
-4. **Vercel** → confirm account ready
+### Key Insight
+The pipeline has a clear dependency graph. Several tracks can run simultaneously if each agent owns specific files and produces verifiable output.
 
-### 0b. Scaffold Next.js App (~25 min)
+### Dependency Graph
+```
+Track 1: Types + Personas ─────────────────────────────┐
+  (src/lib/personas.ts)                                 │
+                                                        ├─→ Track 4: Orchestrator
+Track 2: Screenshot Service ────────────────────────────┤   (src/lib/agent.ts)
+  (src/lib/screenshot.ts)                               │       │
+                                                        │       ├─→ Track 5: Bot Logic
+Track 3: Gemini Evaluation ─────────────────────────────┘       │   (src/lib/bot.tsx)
+  (src/lib/evaluate.ts)                                         │
+                                                                ├─→ Track 6: Web API Route
+Track 7: Web UI (can start with mock data) ─────────────────────┘   (src/app/api/evaluate/)
+  (src/app/page.tsx, src/components/)
+```
+
+### Parallel Batch 1 (can all run simultaneously)
+
+| Track | Files | Owner | Verification |
+|-------|-------|-------|-------------|
+| **1: Types + Personas** | `src/lib/personas.ts` | Agent A | `pnpm typecheck` passes |
+| **2: Screenshot Service** | `src/lib/screenshot.ts` | Agent B | Test script saves PNG to `/tmp/test-screenshot.png` via local Puppeteer, file exists and is >10KB |
+| **3: Gemini Evaluation** | `src/lib/evaluate.ts` | Agent C | Test script prints valid JSON matching PersonaResult schema to stdout |
+| **7: Web UI shell** | `src/app/page.tsx`, `src/components/report-card.tsx` | Agent D | Page renders at localhost:3000 with input form visible |
+
+**Pre-requisite for Batch 1:** Agree on shared types in `src/lib/personas.ts` first (5 min), then all tracks can diverge.
+
+### Sequential Batch 2 (after Batch 1 completes)
+
+| Track | Files | Depends On | Verification |
+|-------|-------|-----------|-------------|
+| **4: Orchestrator** | `src/lib/agent.ts` | Tracks 1, 2, 3 | Test script runs full pipeline with 2 real URLs, prints GhostshipReport JSON, completes in <45s |
+| **5: Bot Logic** | `src/lib/bot.tsx` | Track 4 | @ghostship in Slack with a URL → loading message → report card posted to thread |
+| **6: Web API Route** | `src/app/api/evaluate/route.ts` | Track 4 | `curl -X POST localhost:3000/api/evaluate -d '{"previewUrl":"..."}' ` returns valid JSON |
+
+### Sequential Batch 3 (polish)
+
+| Track | Files | Verification |
+|-------|-------|-------------|
+| **Wire Web UI to API** | `src/app/page.tsx` | Paste URL in browser → see report card render |
+| **Error handling** | All files | Invalid URL → graceful error in Slack and web |
+| **Landing page** | `src/app/page.tsx` | Hero section visible, polished design |
+| **Deploy** | Vercel | Production URL works, Slack events point to prod |
+
+---
+
+## File Ownership Map
+
+Files that will be **created** (don't exist yet):
+```
+src/lib/personas.ts          # Track 1 — types + 5 persona definitions
+src/lib/screenshot.ts         # Track 2 — Puppeteer screenshot service (puppeteer-core + @sparticuz/chromium)
+src/lib/evaluate.ts           # Track 3 — Gemini multimodal evaluation
+src/lib/agent.ts              # Track 4 — orchestrator
+src/app/api/evaluate/route.ts # Track 6 — web API endpoint
+src/components/report-card.tsx # Track 7 — report card component
+```
+
+Files that will be **modified**:
+```
+src/lib/bot.tsx               # Track 5 — replace example handlers with GhostShip
+src/app/page.tsx              # Track 7 — replace example page with GhostShip web UI
+PROBLEM_STATEMENT.md          # Content — already drafted
+```
+
+Files that should NOT be touched:
+```
+src/lib/adapters.ts           # Working adapter setup, leave as-is
+src/lib/recorder.ts           # Recording system, leave as-is
+src/app/api/webhooks/         # Webhook routing, already works
+.env.local                    # Keys already configured
+```
+
+---
+
+## Verification Checklist (Proof of Work)
+
+Each verification step produces concrete, inspectable output.
+
+### Batch 1 Verification
 ```bash
-npx create-next-app@latest . --typescript --tailwind --app --src-dir=false
-npm install ai @ai-sdk/google zod
+# Track 1: Types compile
+pnpm typecheck 2>&1 | tail -5
+# Expected: no errors related to personas.ts
+
+# Track 2: Screenshot works
+node -e "require('./src/lib/screenshot').captureScreenshot('https://vercel.com').then(b => require('fs').writeFileSync('/tmp/test.png', b))"
+ls -la /tmp/test.png
+# Expected: PNG file > 10KB
+
+# Track 3: Gemini evaluation works
+node -e "..." # test script that evaluates one persona with 2 test images
+# Expected: valid JSON printed to stdout
+
+# Track 7: Web UI renders
+curl -s localhost:3000 | head -20
+# Expected: HTML with GhostShip content
 ```
 
-**File structure:**
-```
-ghostship/
-├── app/
-│   ├── layout.tsx
-│   ├── page.tsx                    # Web UI: paste URLs → see report
-│   └── api/
-│       ├── evaluate/
-│       │   └── route.ts            # POST: runs GhostShip pipeline
-│       └── slack/
-│           └── route.ts            # Slack event handler (Phase 3)
-├── lib/
-│   ├── agent.ts                    # Core orchestration
-│   ├── personas.ts                 # 5 persona definitions
-│   ├── screenshot.ts               # ScreenshotOne client
-│   └── evaluate.ts                 # Gemini multimodal evaluation
-├── components/
-│   └── report-card.tsx             # Reusable report card UI
-├── .env.local                      # API keys (gitignored)
-└── .gitignore
-```
-
----
-
-## Phase 1: Core Pipeline (10:45 - 12:15)
-
-### 1a. Screenshot service — `lib/screenshot.ts`
-- `captureScreenshot(url: string): Promise<Buffer>` → calls ScreenshotOne API
-- Viewport 1280x800, full_page=false, format=png
-- URL parsing: `{project}-git-{branch}.vercel.app` → `{project}.vercel.app`
-- Fallback: accept explicit production URL
-
-### 1b. Personas — `lib/personas.ts`
-5 personas as typed objects:
-1. Budget-Conscious Buyer — reads fine print, compares tiers
-2. Power User / Developer — scans fast, wants clear CTA
-3. Non-Technical Executive — 10 seconds or bounce, needs simplicity
-4. First-Time Visitor — no brand context, comparing alternatives
-5. Accessibility-Focused User — contrast, hierarchy, readability
-
-### 1c. Gemini evaluation — `lib/evaluate.ts`
-- `evaluateAsPersona(persona, productionPng, previewPng): Promise<PersonaResult>`
-- Vercel AI SDK `generateObject()` with `@ai-sdk/google`
-- Zod schema: preference, confidence, rationale, pros/cons per variant
-
-### 1d. Agent orchestrator — `lib/agent.ts`
-- `runGhostship(previewUrl, productionUrl?): Promise<GhostshipReport>`
-- Parse URLs → screenshot both (parallel) → 5 persona evals (parallel) → aggregate
-
----
-
-## Phase 2: Web UI (12:15 - 1:15)
-
-### 2a. API route — `app/api/evaluate/route.ts`
-- POST `{ previewUrl, productionUrl? }` → runs pipeline → returns JSON
-
-### 2b. Web interface — `app/page.tsx` + `components/report-card.tsx`
-- Input form: preview URL + optional production URL
-- "Deploy Phantom Users" button
-- Streaming results as personas complete
-- Report card: winner, confidence, per-persona breakdown, summary
-- Dark theme, polished design
-
----
-
-## Phase 3: Slack Bot (1:15 - 2:30)
-
-### 3a. Install Chat SDK
+### Batch 2 Verification
 ```bash
-npm install @vercel/chat-sdk @chat-adapter/slack
+# Track 4: Full pipeline
+node -e "require('./src/lib/agent').runGhostship('https://vercel.com', 'https://vercel.com').then(r => console.log(JSON.stringify(r, null, 2)))"
+# Expected: GhostshipReport JSON with 5 personas, winner, confidence
+
+# Track 5: Slack bot
+# Manual: @ghostship https://vercel.com in Slack
+# Expected: loading message → report card in thread
+
+# Track 6: Web API
+curl -X POST localhost:3000/api/evaluate \
+  -H 'Content-Type: application/json' \
+  -d '{"previewUrl":"https://vercel.com","productionUrl":"https://vercel.com"}'
+# Expected: JSON response with GhostshipReport
 ```
 
-### 3b. Slack handler — `app/api/slack/route.ts`
-- URL verification + `app_mention` events
-- Parse URL → post loading message → run pipeline → post Block Kit report card
+### Batch 3 Verification
+```bash
+# Deploy works
+vercel deploy --prod
+# Expected: production URL accessible
 
-### 3c. Deploy & wire up
-- Deploy to Vercel with env vars
-- Set Slack Event Subscription URL → verify events flow
+# Slack on prod
+# Manual: @ghostship in Slack → report card appears
 
----
-
-## Phase 4: Polish & Demo Prep (2:30 - 4:00)
-
-- Error handling (graceful failures, partial results, timeouts)
-- Demo project: Vercel site with a PR that changes something visually obvious
-- Landing page polish: hero section, explanation, "Add to Slack"
+# Web on prod
+# Manual: open production URL → paste URLs → see report
+```
 
 ---
 
-## Phase 5: Submit (4:00 - 5:00)
+## Tech Stack (Confirmed)
 
-- Production deploy + end-to-end test
-- Screen-record demo flow (backup)
-- README.md
-- Submit
+| Layer | Technology | Status |
+|-------|-----------|--------|
+| Framework | Next.js (App Router) | Installed, running |
+| Chat SDK | `chat` + `@chat-adapter/slack` v4.20.2 | Installed, Slack connected |
+| AI | Vercel AI SDK (`ai`) + `@ai-sdk/google` | `ai` installed, **need to install @ai-sdk/google + zod** |
+| Screenshots | `puppeteer-core` + `@sparticuz/chromium` | **Need to install** — no external API key, self-contained |
+| State | `@chat-adapter/state-memory` | Installed |
+| Deploy | Vercel | Account ready |
 
 ---
 
-## Risk Mitigation
+## Risk Mitigation (Updated)
 
-| Risk | Fallback |
-|------|----------|
-| Account setup slow | Skip ScreenshotOne, use user-uploaded screenshots |
-| Screenshot API flaky | Pre-capture PNGs, hardcode for demo |
-| Gemini rate limited | Reduce to 3 personas, add backoff |
-| Chat SDK Slack issues | Direct Slack API (`chat.postMessage`) |
-| Everything broken by 2:30 | Web UI only, skip Slack |
+| Risk | Trigger | Fallback |
+|------|---------|----------|
+| Puppeteer crashes on Vercel | Chromium binary too large or runtime error | Fall back to user-uploaded screenshots on web UI, or use a free screenshot API (ScreenshotOne free tier) |
+| Gemini rate limited | 429 errors | Reduce to 3 personas, add exponential backoff |
+| Chat SDK issues | Unexpected behavior | Bot logic is just JS functions — can fall back to raw Slack API calls |
+| Pipeline too slow (>60s) | Gemini calls stack up | Fire all 5 persona calls truly in parallel with `Promise.all`, reduce persona count |
+| Web UI takes too long | Time crunch | Ship with Slack-only, landing page is just marketing text |
 
 ---
 
@@ -145,8 +190,6 @@ npm install @vercel/chat-sdk @chat-adapter/slack
 **One-liner:** "Every Vercel preview is already an A/B test. It just has zero users."
 
 **Tagline:** "Lighthouse for UX."
-
-**Why now:** AI coding tools collapsed variant creation cost. Vercel previews deploy them instantly. Gemini multimodal can evaluate screenshots. The only missing piece was connecting them.
 
 **Demo script (60s):**
 1. "AI made shipping 10x faster. But knowing if a change is good still takes weeks."
