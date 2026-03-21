@@ -24,12 +24,10 @@ import {
   TextInput,
   toAiMessages,
 } from "chat";
-import { runGhostship } from "./agent";
-import type { GhostshipReport, PersonaResult } from "./personas";
+import { ghostshipTools, type PrContext } from "./agent";
 import { buildAdapters } from "./adapters";
 
-const URL_REGEX = /https?:\/\/[^\s>]+/i;
-const VERCEL_PREVIEW_REGEX = /https:\/\/[^\s)"<>]+?\.vercel\.app(?:\/[^\s)"<>]*)?/i;
+const URL_REGEX = /https?:\/\/[^\s>]+/gi;
 const AI_MENTION_REGEX = /\bAI\b/i;
 const DISABLE_AI_REGEX = /disable\s*AI/i;
 const ENABLE_AI_REGEX = /enable\s*AI/i;
@@ -65,46 +63,30 @@ const agent = new ToolLoopAgent({
     "You are a helpful assistant in a chat thread. Answer the user's queries in a concise manner.",
 });
 
-// Auto-detect Vercel preview URL from GitHub PR comments (e.g. vercel[bot] deployment)
-async function findVercelPreviewUrl(thread: {
-  adapter: { fetchMessages(threadId: string, options?: unknown): Promise<{ messages: Array<{ author: { userName: string }; text: string }> }> };
-  id: string;
-}): Promise<string | null> {
-  try {
-    const result = await thread.adapter.fetchMessages(thread.id, {
-      limit: 100,
-      direction: "forward" as const,
-    });
-
-    // First pass: look for vercel[bot] comments with preview URLs
-    for (const msg of result.messages) {
-      const isVercelBot =
-        msg.author.userName === "vercel[bot]" ||
-        msg.author.userName === "vercel";
-      if (isVercelBot) {
-        const match = msg.text.match(VERCEL_PREVIEW_REGEX);
-        if (match) return match[0];
-      }
-    }
-
-    // Second pass: any comment containing a .vercel.app URL
-    for (const msg of result.messages) {
-      const match = msg.text.match(VERCEL_PREVIEW_REGEX);
-      if (match) return match[0];
-    }
-
-    return null;
-  } catch (err) {
-    console.error("Failed to find Vercel preview URL from PR:", err);
-    return null;
-  }
+// Parse GitHub thread ID → PR context (github:owner/repo:prNumber)
+function parseGitHubThreadId(threadId: string): PrContext | undefined {
+  const match = threadId.match(/^github:([^/]+)\/([^:]+):(\d+)/);
+  if (!match) return undefined;
+  return { owner: match[1], repo: match[2], prNumber: parseInt(match[3], 10) };
 }
+
+// User-friendly labels: "preview" → "This PR", "production" → "Current"
+const LABEL: Record<string, string> = {
+  preview: "This PR",
+  production: "Current",
+};
 
 // Format a GhostShip report as a Chat SDK Card
 function formatReportCard(report: GhostshipReport) {
-  const { winner, confidence, preferenceSplit, personas: results, summary } = report;
+  const {
+    winner,
+    confidence,
+    recommendation,
+    preferenceSplit,
+    personas: results,
+    summary,
+  } = report;
 
-  // Extract page path from preview URL
   let pagePath: string;
   try {
     pagePath = new URL(report.previewUrl).pathname || "/";
@@ -112,92 +94,90 @@ function formatReportCard(report: GhostshipReport) {
     pagePath = "/";
   }
 
-  // Winner headline
-  const majorityCount = Math.max(preferenceSplit.production, preferenceSplit.preview);
-  const minorityCount = Math.min(preferenceSplit.production, preferenceSplit.preview);
-  const winnerLabel = winner === "preview" ? "Preview" : "Production";
-  const headline =
+  const majorityCount = Math.max(
+    preferenceSplit.production,
+    preferenceSplit.preview
+  );
+  const minorityCount = Math.min(
+    preferenceSplit.production,
+    preferenceSplit.preview
+  );
+  const confidenceLabel =
+    confidence >= 70 ? "high" : confidence >= 50 ? "medium" : "low";
+  const verdict =
     winner === "inconclusive"
-      ? `Inconclusive (${preferenceSplit.production}-${preferenceSplit.preview})`
-      : `${winnerLabel} wins ${majorityCount}-${minorityCount}`;
+      ? `⚖️ Split decision ${preferenceSplit.production}–${preferenceSplit.preview}`
+      : `${LABEL[winner]} wins ${majorityCount}–${minorityCount}`;
+
+  const tableRows = results.map((r: PersonaResult) => [
+    `${r.personaEmoji} ${r.personaName}`,
+    LABEL[r.preference],
+    r.confidence,
+  ]);
 
   return (
-    <Card title={`👻 Ghostship Report: ${pagePath}`}>
+    <Card title={`👻 GhostShip · \`${pagePath}\``}>
       <Text>
-        {`**${headline}** · Confidence: ${confidence}%`}
+        {`**${verdict}** · ${confidence}% confidence (${confidenceLabel})`}
+      </Text>
+      <Text>{`**${recommendation}**`}</Text>
+      <Divider />
+      <Text>{summary}</Text>
+      <Divider />
+      <Table
+        headers={["Persona", "Prefers", "Confidence"]}
+        rows={tableRows}
+      />
+      <Divider />
+      {results.map((r: PersonaResult) => (
+        <Section key={r.personaId}>
+          <Text>
+            {`**${r.personaEmoji} ${r.personaName}** → ${LABEL[r.preference]}\n> ${r.rationale}`}
+          </Text>
+        </Section>
+      ))}
+    </Card>
+  );
+}
+
+// Format a single-page review as a Chat SDK Card
+function formatPageReview(review: PageReviewReport) {
+  return (
+    <Card title={`👻 GhostShip · Page Review`}>
+      <Text>
+        {`**${review.url}** · Average: ${review.averageScore.toFixed(1)}/10`}
       </Text>
       <Divider />
-      {results.map((result: PersonaResult) => (
-        <Section key={result.personaId}>
+      {review.evaluations.map((ev: PageEvaluation) => (
+        <Section key={ev.personaId}>
           <Text>
-            {`${result.personaEmoji} **${result.personaName}**\nPrefers: **${result.preference}** (${result.confidence} confidence)\n_${result.rationale}_`}
+            {`${ev.personaEmoji} **${ev.personaName}** — ${ev.score}/10 (${ev.overallImpression})\n_${ev.firstImpression}_\n${ev.rationale}`}
           </Text>
         </Section>
       ))}
       <Divider />
       <Section>
-        <Text>{`**Summary:** ${summary}`}</Text>
+        <Text>{`**Summary:** ${review.summary}`}</Text>
       </Section>
     </Card>
   );
 }
 
+// Acknowledge a mention with an eyes reaction (best-effort, no-op on failure)
+async function ackWithReaction(thread: { adapter: { addReaction(threadId: string, messageId: string, emoji: unknown): Promise<void> }; id: string }, messageId: string) {
+  try {
+    await thread.adapter.addReaction(thread.id, messageId, emoji.eyes);
+  } catch {
+    // Some platforms don't support reactions — ignore
+  }
+}
+
 // Handle new @mentions of the bot
 bot.onNewMention(async (thread, message) => {
   await thread.subscribe();
+  await ackWithReaction(thread, message.id);
 
-  // 1. Check for URL — run GhostShip pipeline
-  const urlMatch = message.text.match(URL_REGEX);
-  if (urlMatch) {
-    const url = urlMatch[0];
-    await thread.startTyping(
-      "🚢 Boarding your preview... deploying 5 phantom users"
-    );
-
-    try {
-      const report = await runGhostship(url);
-      await thread.post(formatReportCard(report));
-    } catch (err) {
-      console.error("GhostShip pipeline error:", err);
-      await thread.post(
-        `${emoji.warning} Something went wrong: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
-    }
-    return;
-  }
-
-  // 2. On GitHub with no URL: auto-detect Vercel preview from PR comments
-  if (!urlMatch && thread.adapter.name === "github") {
-    await thread.startTyping(
-      "🔍 Looking for Vercel preview deployment..."
-    );
-    const vercelUrl = await findVercelPreviewUrl(thread);
-    if (vercelUrl) {
-      await thread.startTyping(
-        "🚢 Found preview! Deploying 5 phantom users..."
-      );
-      try {
-        const report = await runGhostship(vercelUrl);
-        await thread.post(formatReportCard(report));
-      } catch (err) {
-        console.error("GhostShip pipeline error:", err);
-        await thread.post(
-          `${emoji.warning} Something went wrong: ${
-            err instanceof Error ? err.message : "Unknown error"
-          }`
-        );
-      }
-    } else {
-      await thread.post(
-        `👻 No Vercel preview URL found on this PR.\n\nUsage: \`@ghostship https://your-preview.vercel.app\``
-      );
-    }
-    return;
-  }
-
-  // 3. Check if user wants AI mode
+  // AI assistant mode (explicit "AI" keyword)
   if (AI_MENTION_REGEX.test(message.text)) {
     await thread.setState({ aiMode: true });
     await thread.startTyping("Thinking...");
@@ -216,19 +196,91 @@ bot.onNewMention(async (thread, message) => {
     return;
   }
 
-  // 4. No URL, no AI — show help
-  await thread.startTyping();
-  await thread.post(
-    <Card title="👻 GhostShip">
-      <Text>
-        {`Send me a Vercel preview URL and I'll deploy 5 phantom users to evaluate it.\n\n**Usage:** \`@ghostship <vercel-preview-url>\`\n\n**Example:** \`@ghostship https://my-app-git-redesign.vercel.app\``}
-      </Text>
-      <Divider />
-      <Text>
-        {`${emoji.sparkles} Mention me with "AI" to enable AI assistant mode instead.`}
-      </Text>
-    </Card>
-  );
+  // GhostShip evaluation — route based on URL count + context
+  const urls = message.text.match(URL_REGEX) || [];
+  const pr =
+    thread.adapter.name === "github"
+      ? parseGitHubThreadId(thread.id)
+      : undefined;
+
+  if (urls.length === 0) {
+    if (pr) {
+      // No URL but on a GitHub PR thread → PR review mode
+      await thread.startTyping("👻 Boarding your PR... analyzing changed pages");
+      try {
+        const report = await runGhostshipAgent(message.text, { pr });
+        await thread.post(formatReportCard(report));
+      } catch (err) {
+        console.error("GhostShip pipeline error:", err);
+        await thread.post(
+          `${emoji.warning} ${
+            err instanceof Error ? err.message : "Something went wrong"
+          }`
+        );
+      }
+      return;
+    }
+    // No URL, no PR context — show help
+    await thread.startTyping();
+    await thread.post(
+      <Card title="👻 GhostShip">
+        <Text>
+          {`Send me a URL and I'll deploy 5 phantom users to evaluate it.\n\n**Examples:**\n\`@ghostship https://example.com\` — single page review\n\`@ghostship https://preview.vercel.app https://prod.vercel.app\` — A/B comparison\n\`@ghostship https://github.com/org/repo/pull/42\` — PR review`}
+        </Text>
+      </Card>
+    );
+    return;
+  }
+
+  if (urls.length === 1) {
+    const url = urls[0];
+    const parsed = parseVercelPreviewUrl(url);
+
+    if (parsed.productionUrl) {
+      // Vercel preview URL → A/B comparison with auto-detected production
+      await thread.startTyping("👻 Deploying phantom users... comparing preview vs production");
+      try {
+        const report = await runGhostshipAgent(message.text, { pr });
+        await thread.post(formatReportCard(report));
+      } catch (err) {
+        console.error("GhostShip pipeline error:", err);
+        await thread.post(
+          `${emoji.warning} ${
+            err instanceof Error ? err.message : "Something went wrong"
+          }`
+        );
+      }
+    } else {
+      // Not a Vercel preview → single page review
+      await thread.startTyping("👻 Reviewing page... deploying 5 phantom users");
+      try {
+        const review = await reviewPage(url);
+        await thread.post(formatPageReview(review));
+      } catch (err) {
+        console.error("GhostShip page review error:", err);
+        await thread.post(
+          `${emoji.warning} ${
+            err instanceof Error ? err.message : "Something went wrong"
+          }`
+        );
+      }
+    }
+    return;
+  }
+
+  // 2+ URLs → A/B comparison via the agent
+  await thread.startTyping("👻 Comparing pages... deploying 5 phantom users");
+  try {
+    const report = await runGhostshipAgent(message.text, { pr });
+    await thread.post(formatReportCard(report));
+  } catch (err) {
+    console.error("GhostShip pipeline error:", err);
+    await thread.post(
+      `${emoji.warning} ${
+        err instanceof Error ? err.message : "Something went wrong"
+      }`
+    );
+  }
 });
 
 // Post a welcome message when the bot is added to a channel
@@ -794,27 +846,21 @@ bot.onSubscribedMessage(async (thread, message) => {
     return;
   }
 
-  // On GitHub: handle @mentions in subscribed threads (re-runs pipeline)
+  // On GitHub: handle @mentions in subscribed threads via the agent
   if (thread.adapter.name === "github" && message.isMention) {
-    const urlMatch = message.text.match(URL_REGEX);
-    if (urlMatch) {
-      const url = urlMatch[0];
-      await thread.startTyping(
-        "🚢 Boarding your preview... deploying 5 phantom users"
+    const pr = parseGitHubThreadId(thread.id);
+    await thread.startTyping("👻 Deploying phantom users...");
+    try {
+      const report = await runGhostshipAgent(message.text, { pr });
+      await thread.post(formatReportCard(report));
+    } catch (err) {
+      console.error("GhostShip pipeline error:", err);
+      await thread.post(
+        `${emoji.warning} ${
+          err instanceof Error ? err.message : "Something went wrong"
+        }`
       );
-      try {
-        const report = await runGhostship(url);
-        await thread.post(formatReportCard(report));
-      } catch (err) {
-        console.error("GhostShip pipeline error:", err);
-        await thread.post(
-          `${emoji.warning} Something went wrong: ${
-            err instanceof Error ? err.message : "Unknown error"
-          }`
-        );
-      }
     }
-    // No URL → already handled by onNewMention or not actionable; don't fall through
     return;
   }
 

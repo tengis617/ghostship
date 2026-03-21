@@ -35,9 +35,17 @@ export interface PageEvaluation {
   suggestions: string[]; // What they'd change
 }
 
+export interface PageReviewReport {
+  url: string;
+  evaluations: PageEvaluation[];
+  averageScore: number;
+  summary: string;
+}
+
 export interface GhostshipReport {
   winner: "production" | "preview" | "inconclusive";
   confidence: number;
+  recommendation: string;
   preferenceSplit: { production: number; preview: number };
   personas: PersonaResult[];
   summary: string;

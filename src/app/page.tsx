@@ -192,51 +192,70 @@ export default function Home() {
             Coding agents collapsed the build cycle. The experiment queue didn&apos;t.
           </p>
 
-          {/* Pipeline comparison — three eras */}
-          <div className="mb-14 space-y-10">
-            {/* Era 1: Before AI — balanced cadence */}
+          {/* Pipeline comparison — Gantt-style timelines */}
+          <div className="mb-14 space-y-12">
+            {/* Era 1: Before AI — balanced pipeline */}
             <div>
-              <div className="mb-3 flex items-baseline gap-3">
+              <div className="mb-4 flex items-baseline gap-3">
                 <p className="font-mono text-[11px] uppercase tracking-wider text-[#666]">
                   Before AI
                 </p>
                 <p className="font-mono text-[10px] text-[#444]">
-                  dev speed ≈ test throughput
+                  dev and testing stay in sync
                 </p>
               </div>
-              {/* Column headers */}
-              <div className="mb-2 grid grid-cols-[1fr_8px_1fr_8px_auto] items-center">
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">Dev</span>
-                <span />
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">A/B test</span>
-                <span />
-                <span />
-              </div>
-              <div className="space-y-1.5">
-                {["Feature 1", "Feature 2", "Feature 3"].map((name, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_8px_1fr_8px_auto] items-center">
-                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
-                      <span className="text-xs text-[#999]">{name}</span>
-                    </div>
-                    <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
-                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
-                      <span className="text-xs text-[#999]">A/B test</span>
-                    </div>
-                    <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
-                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5">
-                      <span className="text-xs text-[#555]">Ship</span>
-                    </div>
+              {/* Gantt chart */}
+              <div className="relative space-y-2">
+                {/* Time axis labels */}
+                <div className="flex justify-between px-1 pb-1">
+                  {["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6", "Wk 7", "Wk 8"].map((wk) => (
+                    <span key={wk} className="font-mono text-[8px] text-[#333]">{wk}</span>
+                  ))}
+                </div>
+                {/* Grid lines */}
+                <div className="pointer-events-none absolute inset-0 top-5 flex justify-between">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="h-full w-px bg-[#1a1a1a]" />
+                  ))}
+                </div>
+                {/* Feature 1: dev wk1-3, test wk4-6 */}
+                <div className="flex h-7 items-center gap-0.5">
+                  <div className="flex h-full w-[37.5%] items-center rounded border border-[#1e1e1e] bg-[#111] px-2">
+                    <span className="text-[10px] text-[#999]">Feature 1 dev</span>
                   </div>
-                ))}
+                  <div className="flex h-full w-[37.5%] items-center rounded border border-[#1e1e1e] bg-[#161620] px-2">
+                    <span className="text-[10px] text-[#999]">A/B test</span>
+                  </div>
+                  <div className="flex h-full w-[12.5%] items-center justify-center rounded border border-emerald-500/20 bg-emerald-500/5">
+                    <span className="text-[9px] text-emerald-500">Ship</span>
+                  </div>
+                </div>
+                {/* Feature 2: dev wk3-5, test wk6-8 — overlaps with F1 test */}
+                <div className="flex h-7 items-center gap-0.5">
+                  <div className="w-[25%]" />
+                  <div className="flex h-full w-[37.5%] items-center rounded border border-[#1e1e1e] bg-[#111] px-2">
+                    <span className="text-[10px] text-[#999]">Feature 2 dev</span>
+                  </div>
+                  <div className="flex h-full w-[37.5%] items-center rounded border border-[#1e1e1e] bg-[#161620] px-2">
+                    <span className="text-[10px] text-[#999]">A/B test</span>
+                  </div>
+                </div>
+                {/* Feature 3: dev wk5-7 — overlaps with F2 test */}
+                <div className="flex h-7 items-center gap-0.5">
+                  <div className="w-[50%]" />
+                  <div className="flex h-full w-[37.5%] items-center rounded border border-[#1e1e1e] bg-[#111] px-2">
+                    <span className="text-[10px] text-[#999]">Feature 3 dev</span>
+                  </div>
+                </div>
               </div>
               <p className="mt-3 font-mono text-[10px] text-[#444]">
-                One feature finishes dev → one slot opens for A/B test. No queue.
+                Dev takes weeks → next feature starts during A/B test. No queue.
               </p>
             </div>
 
-            {/* Era 2: Today — features pile up */}
+            {/* Era 2: Today — everything piles up */}
             <div>
-              <div className="mb-3 flex items-baseline gap-3">
+              <div className="mb-4 flex items-baseline gap-3">
                 <p className="font-mono text-[11px] uppercase tracking-wider text-[#666]">
                   Today
                 </p>
@@ -244,38 +263,43 @@ export default function Home() {
                   features ship faster than you can test them
                 </p>
               </div>
-              {/* Column headers */}
-              <div className="mb-2 grid grid-cols-[100px_8px_1fr] items-center">
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">Dev</span>
-                <span />
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">A/B test</span>
-              </div>
-              <div className="space-y-1.5">
-                {/* Feature 1 — currently testing */}
-                <div className="grid grid-cols-[100px_8px_1fr] items-center">
-                  <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
-                    <span className="font-mono text-[10px] text-emerald-500/50">done</span>
+              {/* Gantt chart */}
+              <div className="relative space-y-2">
+                {/* Time axis */}
+                <div className="flex justify-between px-1 pb-1">
+                  {["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6", "Wk 7", "Wk 8"].map((wk) => (
+                    <span key={wk} className="font-mono text-[8px] text-[#333]">{wk}</span>
+                  ))}
+                </div>
+                <div className="pointer-events-none absolute inset-0 top-5 flex justify-between">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="h-full w-px bg-[#1a1a1a]" />
+                  ))}
+                </div>
+                {/* Feature 1: tiny dev, then A/B test wk1-4 */}
+                <div className="flex h-7 items-center gap-0.5">
+                  <div className="flex h-full w-[4%] items-center justify-center rounded border border-emerald-500/20 bg-emerald-500/5">
+                    <span className="text-[8px] text-emerald-500/70">&#9679;</span>
                   </div>
-                  <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
-                  <div className="flex items-center rounded border border-amber-500/20 bg-amber-500/[0.03]">
-                    <div className="flex-1 px-2.5 py-1.5">
-                      <span className="text-xs text-amber-500">Feature 1</span>
-                    </div>
-                    <div className="border-l border-amber-500/10 px-2 py-1.5">
-                      <span className="font-mono text-[10px] text-amber-500/60 queue-pulse">2-4 wk</span>
-                    </div>
+                  <div className="flex h-full w-[50%] items-center rounded border border-amber-500/20 bg-amber-500/[0.04] px-2">
+                    <span className="text-[10px] text-amber-500">Feature 1 — A/B testing</span>
+                    <span className="ml-auto font-mono text-[9px] text-amber-500/50 queue-pulse">2-4 wk</span>
                   </div>
                 </div>
-                {/* Features 2-5 — done but queued */}
+                {/* Features 2-5: tiny dev done, but queued — stacking */}
                 {["Feature 2", "Feature 3", "Feature 4", "Feature 5"].map((name, i) => (
-                  <div key={i} className="grid grid-cols-[100px_8px_1fr] items-center">
-                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
-                      <span className="font-mono text-[10px] text-emerald-500/50">done</span>
+                  <div key={i} className="flex h-7 items-center gap-0.5">
+                    <div className="flex h-full w-[4%] items-center justify-center rounded border border-emerald-500/20 bg-emerald-500/5">
+                      <span className="text-[8px] text-emerald-500/70">&#9679;</span>
                     </div>
-                    <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
-                    <div className="rounded border border-[#FF2A2A]/20 bg-[#FF2A2A]/[0.03] px-2.5 py-1.5">
-                      <span className="text-xs text-[#FF6B6B]">{name}</span>
-                      <span className="ml-2 font-mono text-[10px] text-[#FF6B6B]/40">queued</span>
+                    <div
+                      className="flex h-full items-center rounded border border-[#FF2A2A]/20 bg-[#FF2A2A]/[0.03] px-2"
+                      style={{ width: `${50 + (i + 1) * 8}%` }}
+                    >
+                      <span className="text-[10px] text-[#FF6B6B]">{name}</span>
+                      <span className="ml-auto font-mono text-[9px] text-[#FF6B6B]/40">
+                        queued {(i + 1) * 2}+ wk
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -285,60 +309,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Era 3: With GhostShip */}
-            <div>
-              <div className="mb-3 flex items-baseline gap-3">
-                <p className="font-mono text-[11px] uppercase tracking-wider text-ghost/70">
-                  With GhostShip
-                </p>
-                <p className="font-mono text-[10px] text-ghost/40">
-                  pre-filter before real traffic
-                </p>
-              </div>
-              <div className="overflow-x-auto pb-2">
-                <div className="flex w-max items-start">
-                  <div className="mt-4 flex items-center">
-                    <div className="rounded-l border border-[#1e1e1e] bg-[#111] px-3 py-1.5">
-                      <span className="text-xs text-[#999]">Dev</span>
-                    </div>
-                    <div className="border-y border-r border-[#1e1e1e] bg-[#111] px-2 py-1.5">
-                      <span className="font-mono text-[10px] text-emerald-500/70">~2hr</span>
-                    </div>
-                  </div>
-
-                  <div className="mx-1.5 mt-[18px] h-px w-2 bg-[#333]" />
-
-                  <div className="mt-4 rounded border border-ghost/20 bg-ghost/5 px-2.5 py-1.5">
-                    <span className="font-mono text-[10px] text-ghost">Persona review</span>
-                    <span className="ml-1.5 font-mono text-[9px] text-ghost/50">30s</span>
-                  </div>
-
-                  <div className="mx-1.5 mt-[18px] h-px w-2 bg-[#333]" />
-
-                  {/* Three parallel outcome paths */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-px w-3 bg-[#333]" />
-                      <div className="rounded border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1">
-                        <span className="font-mono text-[10px] text-emerald-500">Ship</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-px w-3 bg-[#333]" />
-                      <div className="rounded border border-[#FF4444]/20 bg-[#FF4444]/5 px-2.5 py-1">
-                        <span className="font-mono text-[10px] text-[#FF6B6B]">Kill</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-px w-3 bg-[#333]" />
-                      <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2.5 py-1">
-                        <span className="font-mono text-[10px] text-amber-500">A/B test</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Two columns — queue vs results */}

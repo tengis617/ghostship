@@ -54,28 +54,62 @@ Three things converged to make this solvable:
 
 The only missing piece: connecting them.
 
-## The Approach: Synthetic Pre-Filtering
+## GhostShip: Three Capabilities
 
-GhostShip does not replace A/B testing. It is a **pre-filter**.
+GhostShip does not replace A/B testing. It is a **pre-filter** — Lighthouse for UX.
 
-It sends AI-powered "phantom users" — diverse synthetic personas powered by Gemini's
-multimodal reasoning — to evaluate your Vercel preview against production. Each persona
-examines both versions from their specific perspective and reports back with a preference,
-reasoning, and friction points.
+It sends AI-powered "phantom users" powered by Gemini's multimodal reasoning to evaluate
+your pages. Three core capabilities, each building on the last:
 
-This gives teams **directional signal in 30 seconds** on questions like:
-- "Is this new layout clearer or more confusing?"
-- "Does this copy change improve perceived value?"
-- "Which design do different user segments prefer, and why?"
+### 1. Generate Personas on the Fly
 
-### What It Is
+Paste any URL. GhostShip screenshots the page, analyzes its content and purpose, and
+**generates 5 user personas specific to that page** — not generic templates.
+
+A cooking recipe site gets: Home Cook, Professional Chef, Food Blogger, Dietary-Restricted
+User, Mobile Commuter. A B2B SaaS pricing page gets: Budget-Conscious Buyer, Technical
+Evaluator, Non-Technical Executive, First-Time Visitor, Accessibility-Focused User.
+
+The personas adapt to the page. Every evaluation starts with the right audience.
+
+### 2. Review a Page from Each Persona's Perspective
+
+Each generated persona evaluates the page using Gemini's multimodal vision. They assess:
+- **First impression** — what they notice in the first 3 seconds
+- **Strengths and weaknesses** — specific visual elements, not generic feedback
+- **Friction points** — where they'd get confused or leave
+- **Score** — 1-10 rating from their perspective
+
+Five diverse perspectives in 30 seconds. The output isn't "this page is good" — it's
+"here's exactly what a budget-conscious buyer sees vs what a power user sees, and why
+they disagree."
+
+### 3. Compare Pages Across Revisions via PR Reviews
+
+When a developer opens a PR, Vercel deploys a preview. GhostShip compares the preview
+against production from each persona's perspective:
+
+- **In Slack:** `@ghostship <preview-url>` → auto-detects production URL → report card
+- **In GitHub:** `@ghostship` on a PR comment → finds Vercel preview → posts comparison as PR comment
+
+Each persona votes: production or preview. The report card shows the split, the reasoning,
+and a confidence-scored recommendation. A 5-0 vote with high confidence means "ship it."
+A 3-2 split means "run a real A/B test on this one."
+
+This is where the pre-filter earns its keep: of your 30 queued experiments, which ones
+are worth burning real traffic on?
+
+---
+
+## What It Is
 
 - A **UX pre-filter** — like Lighthouse for user experience
 - A way to **kill obvious losers** before committing real traffic
 - A tool for **rapid design iteration** — test 10 variants in 5 minutes
 - A way to **triage the experiment backlog** — focus real A/B tests on close calls
+- **Embedded in the developer workflow** — Slack, GitHub, or the web
 
-### What It Is Not
+## What It Is Not
 
 - A replacement for real A/B testing with real users
 - A way to measure behavioral metrics (conversion, retention, revenue)
@@ -84,7 +118,7 @@ This gives teams **directional signal in 30 seconds** on questions like:
 This is honest and deliberate. GhostShip answers: "Is this change likely better for users,
 and why?" It does not answer: "Will this change increase revenue by 3.2%?"
 
-### Why That's Still Valuable
+## Why That's Still Valuable
 
 Research validates this approach. The SimAB framework (March 2026) tested LLM-based
 simulation against 47 real A/B experiments and achieved:
@@ -94,7 +128,7 @@ simulation against 47 real A/B experiments and achieved:
 For context: most teams shipping without testing are operating at ~50% accuracy (coin flip).
 Even modest predictive power, delivered in 30 seconds and at zero cost, changes the calculus.
 
-### Compared To Existing Options
+## Compared To Existing Options
 
 | | Real A/B Test | UserTesting.com | GhostShip |
 |---|---|---|---|
@@ -103,8 +137,9 @@ Even modest predictive power, delivered in 30 seconds and at zero cost, changes 
 | Frequency | Monthly | Occasional | Every PR |
 | Measures behavior | Yes | Partially | No |
 | Measures UX quality | Indirectly | Yes | Yes |
-| Integrated in workflow | No | No | Yes (Slack, PR) |
+| Integrated in workflow | No | No | Yes (Slack, GitHub, Web) |
 | Scales to every change | No | No | Yes |
+| Personas adapt to page | N/A | Manual | Automatic |
 
 ## Who This Is For
 
@@ -112,3 +147,4 @@ Even modest predictive power, delivered in 30 seconds and at zero cost, changes 
 - **Growth teams** whose experiment backlog outruns their traffic
 - **Startups** where every week of learning delay burns runway
 - **Any team using Vercel** who wants signal on their preview before they ship
+- **Anyone with a URL** who wants to know how different users perceive their page
