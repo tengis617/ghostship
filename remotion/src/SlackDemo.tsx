@@ -539,35 +539,35 @@ export const SlackDemo: React.FC = () => {
                             verdict="Prefers B"
                             color={colors.ghost}
                             emoji="👻"
-                            delay={RESULTS_START + PERSONA_STAGGER * 0}
+                            delay={RESULTS_START - BOT_THINKING + PERSONA_STAGGER * 0}
                           />
                           <PersonaResult
                             name="Buyer"
                             verdict="Prefers B"
                             color={colors.pink}
                             emoji="💰"
-                            delay={RESULTS_START + PERSONA_STAGGER * 1}
+                            delay={RESULTS_START - BOT_THINKING + PERSONA_STAGGER * 1}
                           />
                           <PersonaResult
                             name="Accessibility"
                             verdict="Prefers B"
                             color={colors.mint}
                             emoji="♿"
-                            delay={RESULTS_START + PERSONA_STAGGER * 2}
+                            delay={RESULTS_START - BOT_THINKING + PERSONA_STAGGER * 2}
                           />
                           <PersonaResult
                             name="Executive"
                             verdict="Prefers A"
                             color={colors.cream}
                             emoji="👔"
-                            delay={RESULTS_START + PERSONA_STAGGER * 3}
+                            delay={RESULTS_START - BOT_THINKING + PERSONA_STAGGER * 3}
                           />
                           <PersonaResult
                             name="Power User"
                             verdict="Prefers B"
                             color={colors.lavender}
                             emoji="⚡"
-                            delay={RESULTS_START + PERSONA_STAGGER * 4}
+                            delay={RESULTS_START - BOT_THINKING + PERSONA_STAGGER * 4}
                           />
                         </div>
 
