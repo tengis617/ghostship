@@ -26,12 +26,12 @@ export function HeroForm() {
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="https://your-website.com"
-        className="flex-1 rounded-full border border-[#1e1e1e] bg-[#111] px-5 py-2.5 font-mono text-sm text-[#eee] placeholder-[#444] outline-none transition-colors focus:border-ghost/30"
+        className="flex-1 rounded-full border border-[#333] bg-[#111] px-5 py-3 font-mono text-sm text-[#eee] placeholder-[#555] outline-none transition-colors focus:border-ghost/40"
       />
       <button
         type="submit"
         disabled={!url.trim()}
-        className="group flex items-center gap-2 rounded-full border border-ghost/20 bg-ghost/10 px-5 py-2.5 font-mono text-sm text-ghost transition-all hover:bg-ghost/20 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-30"
+        className="group flex items-center gap-2 rounded-full bg-ghost px-6 py-3 font-mono text-sm font-semibold text-[#0a0a0a] transition-all hover:brightness-110 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-30"
       >
         Evaluate
         <svg
