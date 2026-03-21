@@ -1,6 +1,6 @@
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { getVisionModel } from "./ai-models";
 import type { Persona } from "./personas";
 
 export interface PageAnalysis {
@@ -47,7 +47,7 @@ export async function analyzePageAndGeneratePersonas(
   pageUrl?: string
 ): Promise<PageAnalysis> {
   const result = await generateText({
-    model: google("gemini-2.5-flash"),
+    model: getVisionModel(),
     output: Output.object({ schema: pageAnalysisSchema }),
     messages: [
       {

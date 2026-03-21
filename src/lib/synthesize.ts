@@ -1,6 +1,6 @@
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { getVisionModel } from "./ai-models";
 import type { PageEvaluation } from "./personas";
 
 const synthesisSchema = z.object({
@@ -38,7 +38,7 @@ export async function synthesizeEvaluations(
     .join("\n\n");
 
   const result = await generateText({
-    model: google("gemini-2.5-flash"),
+    model: getVisionModel(),
     output: Output.object({ schema: synthesisSchema }),
     messages: [
       {

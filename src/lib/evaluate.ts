@@ -1,6 +1,6 @@
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { getVisionModel } from "./ai-models";
 import type { Persona, PersonaResult, PageEvaluation } from "./personas";
 
 const personaResultSchema = z.object({
@@ -49,7 +49,7 @@ screenshots. Your rationale should be one clear sentence written in your
 character's voice.`;
 
   const result = await generateText({
-    model: google("gemini-2.5-flash"),
+    model: getVisionModel(),
     output: Output.object({ schema: personaResultSchema }),
     messages: [
       { role: "system", content: systemPrompt },
@@ -128,7 +128,7 @@ as 2-3 sentences in your character's authentic voice. Your first impression shou
 capture what you notice in the very first 3 seconds of viewing the page.`;
 
   const result = await generateText({
-    model: google("gemini-2.5-flash"),
+    model: getVisionModel(),
     output: Output.object({ schema: pageEvaluationSchema }),
     messages: [
       { role: "system", content: systemPrompt },
