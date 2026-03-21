@@ -37,36 +37,7 @@ function Ghost({ color, size = 48 }: { color: string; size?: number }) {
   );
 }
 
-/* ─── Ship silhouette ─── */
-
-function ShipSilhouette() {
-  return (
-    <svg
-      viewBox="0 0 180 220"
-      className="ship-rock w-full h-full"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Hull */}
-      <path
-        d="M 25 175 C 55 200, 135 200, 160 175 L 150 148 L 35 148 Z"
-        fill="#181818"
-      />
-      {/* Mast */}
-      <rect x="90" y="32" width="3" height="120" fill="#1a1a1a" />
-      {/* Main sail — tattered edge */}
-      <path
-        d="M 48 50 L 90 42 L 90 135 L 56 126 Q 60 120, 54 114 Q 58 108, 52 102 Z"
-        fill="#151515"
-      />
-      {/* Rear sail */}
-      <path d="M 93 42 L 138 52 L 132 126 L 93 135 Z" fill="#131313" />
-      {/* Crow's nest */}
-      <rect x="83" y="30" width="18" height="3" rx="1" fill="#1a1a1a" />
-      {/* Flag */}
-      <path d="M 92 32 L 112 24 L 112 42 L 92 34 Z" fill="#1c1c1c" />
-    </svg>
-  );
-}
+/* ─── Ship silhouette (removed — using real image now) ─── */
 
 /* ─── Phantom data ─── */
 
@@ -128,17 +99,6 @@ const phantoms = [
   },
 ];
 
-/* ─── Particle trail between ship and ghosts ─── */
-
-const particles = [
-  { x: 16, y: 42, s: 2 },
-  { x: 18, y: 37, s: 3 },
-  { x: 20, y: 46, s: 2 },
-  { x: 22, y: 40, s: 2.5 },
-  { x: 24, y: 35, s: 2 },
-  { x: 26, y: 44, s: 3 },
-  { x: 27, y: 38, s: 2 },
-];
 
 /* ─── Page ─── */
 
@@ -423,25 +383,22 @@ export default function Home() {
         {/* Ship — left side, desktop only */}
         <div
           className="absolute top-1/2 hidden -translate-y-1/2 md:block"
-          style={{ left: "5%", width: "160px", height: "200px" }}
+          style={{ left: "2%", width: "220px" }}
         >
-          <ShipSilhouette />
-        </div>
-
-        {/* Particle trail — desktop only */}
-        {particles.map((p, i) => (
-          <div
-            key={`p-${i}`}
-            className="absolute hidden rounded-full md:block"
+          <Image
+            src="/images/ghost-ship-side.jpg"
+            alt="Ghost pirate ship"
+            width={220}
+            height={220}
+            className="ship-rock mix-blend-lighten opacity-60"
             style={{
-              width: `${p.s}px`,
-              height: `${p.s}px`,
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              background: `rgba(212, 245, 245, ${0.04 + i * 0.008})`,
+              maskImage:
+                "radial-gradient(ellipse 85% 85% at center, black 40%, transparent 100%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse 85% 85% at center, black 40%, transparent 100%)",
             }}
           />
-        ))}
+        </div>
 
         {/* Ghosts — desktop: scattered absolute, mobile: flex grid */}
         <div className="relative mx-auto h-[420px] w-full max-w-6xl">
