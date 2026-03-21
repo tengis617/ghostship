@@ -64,6 +64,26 @@ Track 7: Landing Page ───────────────────�
 | **5: Bot Logic** | `src/lib/bot.tsx` | Track 4 | @ghostship in Slack with a URL → loading message → report card posted to thread |
 | **6: Web API Route** | `src/app/api/evaluate/route.ts` | Track 4 | `curl -X POST localhost:3000/api/evaluate -d '{"previewUrl":"..."}' ` returns valid JSON |
 
+### Batch 2.5 (can run now, independent of Bot Logic)
+
+| Track | Files | Depends On | Verification |
+|-------|-------|-----------|-------------|
+| **8: Single-Page Eval Script** | `src/lib/evaluate.ts`, `src/lib/personas.ts`, `scripts/evaluate-page.ts` | Tracks 1, 2, 3 | `npx tsx scripts/evaluate-page.ts https://vercel.com` → 5 differentiated persona evaluations |
+
+This is for validating persona quality before running full A/B comparisons. Evaluates one page from all 5 perspectives — no comparison needed.
+
+### Batch 2.75 (dogfooding — after deploy)
+
+| Track | Files | Depends On | Verification |
+|-------|-------|-----------|-------------|
+| **9a: Pricing Page** | `src/app/pricing/page.tsx` | None | `/pricing` renders 3-tier page matching brand |
+| **9b: Variant PRs** | `src/app/pricing/page.tsx` (on branches) | 9a deployed | 2 PRs open, each with Vercel preview URL |
+| **10: GitHub Adapter** | `src/lib/bot.tsx`, `.env.local` | 9b | `@ghostship <url>` in PR comment → report card posted |
+
+Track 9 creates a pricing page on main + 2 variant branches as PRs. This is the dogfood/demo: GhostShip evaluating PRs on its own repo.
+
+Track 10 wires GitHub so @ghostship works in PR comments (not just Slack).
+
 ### Sequential Batch 3 (polish)
 
 | Track | Files | Verification |
@@ -71,6 +91,12 @@ Track 7: Landing Page ───────────────────�
 | **Error handling** | All files | Invalid URL → graceful error in Slack |
 | **(Stretch) Web UI compare** | `src/app/page.tsx`, `src/app/api/evaluate/route.ts`, `src/components/report-card.tsx` | Paste 2 URLs → see report card (only if time permits) |
 | **Deploy** | Vercel | Production URL works, Slack events point to prod |
+
+### Advanced Track (if time permits)
+
+| Track | Files | Description |
+|-------|-------|-------------|
+| **11: Interactive Persona Agents** | `src/lib/evaluate-interactive.ts`, `scripts/evaluate-interactive.ts` | Upgrade personas from screenshot observers to browsing agents using agent-browser + Gemini tool calling. Each persona navigates, clicks, scrolls, and reports behavioral feedback. `@ghostship <url> --deep` |
 
 ---
 
@@ -83,6 +109,8 @@ src/lib/screenshot.ts         # Track 2 — Puppeteer screenshot service (puppet
 src/lib/evaluate.ts           # Track 3 — Gemini multimodal evaluation
 src/lib/agent.ts              # Track 4 — orchestrator
 src/app/api/evaluate/route.ts # Track 6 — web API endpoint (stretch goal)
+scripts/evaluate-page.ts     # Track 8 — single-page persona evaluation CLI
+src/app/pricing/page.tsx     # Track 9 — demo pricing page (baseline + variants on branches)
 ```
 
 Files that will be **modified**:

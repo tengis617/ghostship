@@ -29,6 +29,7 @@ import type { GhostshipReport, PersonaResult } from "./personas";
 import { buildAdapters } from "./adapters";
 
 const URL_REGEX = /https?:\/\/[^\s>]+/i;
+const VERCEL_PREVIEW_REGEX = /https:\/\/[^\s)"<>]+?\.vercel\.app(?:\/[^\s)"<>]*)?/i;
 const AI_MENTION_REGEX = /\bAI\b/i;
 const DISABLE_AI_REGEX = /disable\s*AI/i;
 const ENABLE_AI_REGEX = /enable\s*AI/i;
@@ -63,6 +64,41 @@ const agent = new ToolLoopAgent({
   instructions:
     "You are a helpful assistant in a chat thread. Answer the user's queries in a concise manner.",
 });
+
+// Auto-detect Vercel preview URL from GitHub PR comments (e.g. vercel[bot] deployment)
+async function findVercelPreviewUrl(thread: {
+  adapter: { fetchMessages(threadId: string, options?: unknown): Promise<{ messages: Array<{ author: { userName: string }; text: string }> }> };
+  id: string;
+}): Promise<string | null> {
+  try {
+    const result = await thread.adapter.fetchMessages(thread.id, {
+      limit: 100,
+      direction: "forward" as const,
+    });
+
+    // First pass: look for vercel[bot] comments with preview URLs
+    for (const msg of result.messages) {
+      const isVercelBot =
+        msg.author.userName === "vercel[bot]" ||
+        msg.author.userName === "vercel";
+      if (isVercelBot) {
+        const match = msg.text.match(VERCEL_PREVIEW_REGEX);
+        if (match) return match[0];
+      }
+    }
+
+    // Second pass: any comment containing a .vercel.app URL
+    for (const msg of result.messages) {
+      const match = msg.text.match(VERCEL_PREVIEW_REGEX);
+      if (match) return match[0];
+    }
+
+    return null;
+  } catch (err) {
+    console.error("Failed to find Vercel preview URL from PR:", err);
+    return null;
+  }
+}
 
 // Format a GhostShip report as a Chat SDK Card
 function formatReportCard(report: GhostshipReport) {
@@ -132,7 +168,36 @@ bot.onNewMention(async (thread, message) => {
     return;
   }
 
-  // 2. Check if user wants AI mode
+  // 2. On GitHub with no URL: auto-detect Vercel preview from PR comments
+  if (!urlMatch && thread.adapter.name === "github") {
+    await thread.startTyping(
+      "🔍 Looking for Vercel preview deployment..."
+    );
+    const vercelUrl = await findVercelPreviewUrl(thread);
+    if (vercelUrl) {
+      await thread.startTyping(
+        "🚢 Found preview! Deploying 5 phantom users..."
+      );
+      try {
+        const report = await runGhostship(vercelUrl);
+        await thread.post(formatReportCard(report));
+      } catch (err) {
+        console.error("GhostShip pipeline error:", err);
+        await thread.post(
+          `${emoji.warning} Something went wrong: ${
+            err instanceof Error ? err.message : "Unknown error"
+          }`
+        );
+      }
+    } else {
+      await thread.post(
+        `👻 No Vercel preview URL found on this PR.\n\nUsage: \`@ghostship https://your-preview.vercel.app\``
+      );
+    }
+    return;
+  }
+
+  // 3. Check if user wants AI mode
   if (AI_MENTION_REGEX.test(message.text)) {
     await thread.setState({ aiMode: true });
     await thread.startTyping("Thinking...");
@@ -151,7 +216,7 @@ bot.onNewMention(async (thread, message) => {
     return;
   }
 
-  // 3. No URL, no AI — show help
+  // 4. No URL, no AI — show help
   await thread.startTyping();
   await thread.post(
     <Card title="👻 GhostShip">
@@ -728,6 +793,31 @@ bot.onSubscribedMessage(async (thread, message) => {
   if (!(thread.adapter.name === "telegram" || message.isMention)) {
     return;
   }
+
+  // On GitHub: handle @mentions in subscribed threads (re-runs pipeline)
+  if (thread.adapter.name === "github" && message.isMention) {
+    const urlMatch = message.text.match(URL_REGEX);
+    if (urlMatch) {
+      const url = urlMatch[0];
+      await thread.startTyping(
+        "🚢 Boarding your preview... deploying 5 phantom users"
+      );
+      try {
+        const report = await runGhostship(url);
+        await thread.post(formatReportCard(report));
+      } catch (err) {
+        console.error("GhostShip pipeline error:", err);
+        await thread.post(
+          `${emoji.warning} Something went wrong: ${
+            err instanceof Error ? err.message : "Unknown error"
+          }`
+        );
+      }
+    }
+    // No URL → already handled by onNewMention or not actionable; don't fall through
+    return;
+  }
+
   // Get thread state to check AI mode
   const threadState = await thread.state;
 

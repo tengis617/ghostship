@@ -201,10 +201,16 @@ BATCH 2.75: DOGFOODING (after deploy)
 
 ## Track 10: GitHub Adapter Integration
    Owner: src/lib/bot.tsx (MODIFY if needed), .env.local (add GitHub creds)
-   [ ] Set up GitHub App or PAT (GITHUB_TOKEN + GITHUB_WEBHOOK_SECRET)
-   [ ] Configure GitHub webhook → /api/webhooks/github
-   [ ] Verify @ghostship mention in PR comment triggers the bot
-   [ ] Test: comment @ghostship <preview-url> on pricing-v2 PR → report card as PR comment
+   [x] GitHub adapter already wired in adapters.ts (activates when GITHUB_WEBHOOK_SECRET is set)
+   [x] Webhook route /api/webhooks/github already handles GitHub events via Chat SDK
+   [x] Added Vercel preview URL auto-detection from PR comments (vercel[bot] or any .vercel.app URL)
+   [x] onNewMention handler works cross-platform — explicit URL triggers pipeline on GitHub same as Slack
+   [x] GitHub-specific flow: @ghostship without URL → scans PR comments for Vercel preview → runs pipeline
+   [x] Report card renders as GitHub markdown via Chat SDK's renderFormatted()
+   [x] pnpm typecheck passes
+   [ ] Set up GitHub App or PAT (GITHUB_TOKEN + GITHUB_WEBHOOK_SECRET) in .env.local
+   [ ] Configure GitHub webhook → /api/webhooks/github (issue_comment + pull_request events)
+   [ ] Test: comment @ghostship <preview-url> on a PR → report card as PR comment
    VERIFY: report card appears as GitHub PR comment with persona breakdown
 
 =====================================
@@ -242,6 +248,30 @@ BATCH 3: POLISH & SHIP
    [ ] README.md: problem, solution, tech stack, demo link
    [ ] Final review of PROBLEM_STATEMENT.md
    [ ] Submit before 5:00 PM
+
+=====================================
+ADVANCED: INTERACTIVE PERSONA AGENTS
+=====================================
+
+## Track 11: Agent-Browser Personas [stretch — only if time permits]
+   Owner: src/lib/evaluate-interactive.ts (CREATE), scripts/evaluate-interactive.ts (CREATE)
+   Deps: agent-browser (https://github.com/vercel-labs/agent-browser), Vercel AI SDK tool calling
+   Purpose: Upgrade personas from screenshot observers → browsing agents that navigate, click, scroll
+   [ ] Research agent-browser API and integration patterns
+   [ ] Add InteractiveEvaluation + BrowserAction types to personas.ts
+   [ ] Create evaluate-interactive.ts with evaluateInteractively(persona, url)
+       — starts agent-browser session per persona
+       — Gemini as tool-calling agent with browser tools (navigate, click, scroll, screenshot, readPage, type)
+       — persona system prompt shapes browsing behavior
+       — captures journey (actions + screenshots + reasoning)
+       — returns InteractiveEvaluation with full action log
+   [ ] Create scripts/evaluate-interactive.ts CLI test script
+       — npx tsx scripts/evaluate-interactive.ts https://vercel.com/pricing
+       — outputs each persona's journey with action-by-action narration
+   [ ] Add mode flag to runGhostship(): "screenshot" (fast, 30s) vs "interactive" (deep, 2-5min)
+   [ ] Add --deep flag to Slack/GitHub handler: @ghostship <url> --deep
+   VERIFY: persona navigates page, takes 5-15 actions, produces behavioral evaluation
+   VERIFY: each persona has different journey based on their goals
 
 =====================================
 NOTES / BLOCKERS

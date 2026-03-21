@@ -22,6 +22,19 @@ export interface PersonaResult {
   previewCons: string[];
 }
 
+export interface PageEvaluation {
+  personaId: string;
+  personaName: string;
+  personaEmoji: string;
+  overallImpression: "positive" | "neutral" | "negative";
+  score: number; // 1-10
+  firstImpression: string; // What they notice in the first 3 seconds
+  rationale: string; // 2-3 sentence assessment in their voice
+  strengths: string[]; // What works well for this persona
+  weaknesses: string[]; // What doesn't work / friction points
+  suggestions: string[]; // What they'd change
+}
+
 export interface GhostshipReport {
   winner: "production" | "preview" | "inconclusive";
   confidence: number;
