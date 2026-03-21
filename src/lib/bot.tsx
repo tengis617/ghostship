@@ -1,7 +1,6 @@
 /** @jsxImportSource chat */
 import { createMemoryState } from "@chat-adapter/state-memory";
 import { createRedisState } from "@chat-adapter/state-redis";
-import { ToolLoopAgent } from "ai";
 import {
   Actions,
   type AiMessage,
@@ -24,14 +23,8 @@ import {
   TextInput,
   toAiMessages,
 } from "chat";
-import { ghostshipTools, type PrContext } from "./agent";
+import { createGhostshipAgent, type PrContext } from "./agent";
 import { buildAdapters } from "./adapters";
-
-const URL_REGEX = /https?:\/\/[^\s>]+/gi;
-const AI_MENTION_REGEX = /\bAI\b/i;
-const DISABLE_AI_REGEX = /disable\s*AI/i;
-const ENABLE_AI_REGEX = /enable\s*AI/i;
-const DM_ME_REGEX = /^dm\s*me$/i;
 
 const state = process.env.REDIS_URL
   ? createRedisState({
@@ -56,13 +49,6 @@ export const bot = new Chat<typeof adapters, ThreadState>({
   logger: "debug",
 });
 
-// AI agent for AI mode
-const agent = new ToolLoopAgent({
-  model: "anthropic/claude-4.5-sonnet",
-  instructions:
-    "You are a helpful assistant in a chat thread. Answer the user's queries in a concise manner.",
-});
-
 // Parse GitHub thread ID → PR context (github:owner/repo:prNumber)
 function parseGitHubThreadId(threadId: string): PrContext | undefined {
   const match = threadId.match(/^github:([^/]+)\/([^:]+):(\d+)/);
@@ -70,101 +56,15 @@ function parseGitHubThreadId(threadId: string): PrContext | undefined {
   return { owner: match[1], repo: match[2], prNumber: parseInt(match[3], 10) };
 }
 
-// User-friendly labels: "preview" → "This PR", "production" → "Current"
-const LABEL: Record<string, string> = {
-  preview: "This PR",
-  production: "Current",
-};
-
-// Format a GhostShip report as a Chat SDK Card
-function formatReportCard(report: GhostshipReport) {
-  const {
-    winner,
-    confidence,
-    recommendation,
-    preferenceSplit,
-    personas: results,
-    summary,
-  } = report;
-
-  let pagePath: string;
-  try {
-    pagePath = new URL(report.previewUrl).pathname || "/";
-  } catch {
-    pagePath = "/";
-  }
-
-  const majorityCount = Math.max(
-    preferenceSplit.production,
-    preferenceSplit.preview
-  );
-  const minorityCount = Math.min(
-    preferenceSplit.production,
-    preferenceSplit.preview
-  );
-  const confidenceLabel =
-    confidence >= 70 ? "high" : confidence >= 50 ? "medium" : "low";
-  const verdict =
-    winner === "inconclusive"
-      ? `⚖️ Split decision ${preferenceSplit.production}–${preferenceSplit.preview}`
-      : `${LABEL[winner]} wins ${majorityCount}–${minorityCount}`;
-
-  const tableRows = results.map((r: PersonaResult) => [
-    `${r.personaEmoji} ${r.personaName}`,
-    LABEL[r.preference],
-    r.confidence,
-  ]);
-
-  return (
-    <Card title={`👻 GhostShip · \`${pagePath}\``}>
-      <Text>
-        {`**${verdict}** · ${confidence}% confidence (${confidenceLabel})`}
-      </Text>
-      <Text>{`**${recommendation}**`}</Text>
-      <Divider />
-      <Text>{summary}</Text>
-      <Divider />
-      <Table
-        headers={["Persona", "Prefers", "Confidence"]}
-        rows={tableRows}
-      />
-      <Divider />
-      {results.map((r: PersonaResult) => (
-        <Section key={r.personaId}>
-          <Text>
-            {`**${r.personaEmoji} ${r.personaName}** → ${LABEL[r.preference]}\n> ${r.rationale}`}
-          </Text>
-        </Section>
-      ))}
-    </Card>
-  );
-}
-
-// Format a single-page review as a Chat SDK Card
-function formatPageReview(review: PageReviewReport) {
-  return (
-    <Card title={`👻 GhostShip · Page Review`}>
-      <Text>
-        {`**${review.url}** · Average: ${review.averageScore.toFixed(1)}/10`}
-      </Text>
-      <Divider />
-      {review.evaluations.map((ev: PageEvaluation) => (
-        <Section key={ev.personaId}>
-          <Text>
-            {`${ev.personaEmoji} **${ev.personaName}** — ${ev.score}/10 (${ev.overallImpression})\n_${ev.firstImpression}_\n${ev.rationale}`}
-          </Text>
-        </Section>
-      ))}
-      <Divider />
-      <Section>
-        <Text>{`**Summary:** ${review.summary}`}</Text>
-      </Section>
-    </Card>
+// Create a per-request agent with the thread bound for plan block streaming
+function createAgent(thread?: { id: string; adapter: unknown }) {
+  return createGhostshipAgent(
+    thread as Parameters<typeof createGhostshipAgent>[0]
   );
 }
 
 // Acknowledge a mention with an eyes reaction (best-effort, no-op on failure)
-async function ackWithReaction(thread: { adapter: { addReaction(threadId: string, messageId: string, emoji: unknown): Promise<void> }; id: string }, messageId: string) {
+async function ackWithReaction(thread: { adapter: { addReaction(threadId: string, messageId: string, emojiVal: unknown): Promise<void> }; id: string }, messageId: string) {
   try {
     await thread.adapter.addReaction(thread.id, messageId, emoji.eyes);
   } catch {
@@ -172,113 +72,50 @@ async function ackWithReaction(thread: { adapter: { addReaction(threadId: string
   }
 }
 
+// Build conversation history from thread messages
+async function getHistory(thread: { adapter: { fetchMessages(threadId: string, options?: unknown): Promise<{ messages: unknown[] }> }; id: string; state: Promise<ThreadState | null> }): Promise<AiMessage[]> {
+  try {
+    const result = await thread.adapter.fetchMessages(thread.id, { limit: 20 });
+    if (result.messages.length > 0) {
+      return toAiMessages(result.messages as Parameters<typeof toAiMessages>[0]);
+    }
+  } catch { /* fetchMessages not supported */ }
+  // Fallback to stored history
+  const threadState = await thread.state;
+  return threadState?.history ?? [];
+}
+
 // Handle new @mentions of the bot
 bot.onNewMention(async (thread, message) => {
   await thread.subscribe();
   await ackWithReaction(thread, message.id);
 
-  // AI assistant mode (explicit "AI" keyword)
-  if (AI_MENTION_REGEX.test(message.text)) {
-    await thread.setState({ aiMode: true });
-    await thread.startTyping("Thinking...");
-    try {
-      const history = await toAiMessages([message]);
-      const result = await agent.stream({ prompt: history });
-      await thread.post(result.fullStream);
-    } catch (err) {
-      console.error("Error in AI response:", err);
-      await thread.post(
-        `${emoji.warning} Error in AI response: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
-    }
-    return;
-  }
-
-  // GhostShip evaluation — route based on URL count + context
-  const urls = message.text.match(URL_REGEX) || [];
+  // Build prompt with optional PR context
   const pr =
     thread.adapter.name === "github"
       ? parseGitHubThreadId(thread.id)
       : undefined;
+  const contextHint = pr
+    ? `\n[Context: You are on GitHub PR #${pr.prNumber} on ${pr.owner}/${pr.repo}. Use get_pr_changed_files and find_vercel_preview_url to analyze it.]`
+    : "";
 
-  if (urls.length === 0) {
-    if (pr) {
-      // No URL but on a GitHub PR thread → PR review mode
-      await thread.startTyping("👻 Boarding your PR... analyzing changed pages");
-      try {
-        const report = await runGhostshipAgent(message.text, { pr });
-        await thread.post(formatReportCard(report));
-      } catch (err) {
-        console.error("GhostShip pipeline error:", err);
-        await thread.post(
-          `${emoji.warning} ${
-            err instanceof Error ? err.message : "Something went wrong"
-          }`
-        );
-      }
-      return;
-    }
-    // No URL, no PR context — show help
-    await thread.startTyping();
-    await thread.post(
-      <Card title="👻 GhostShip">
-        <Text>
-          {`Send me a URL and I'll deploy 5 phantom users to evaluate it.\n\n**Examples:**\n\`@ghostship https://example.com\` — single page review\n\`@ghostship https://preview.vercel.app https://prod.vercel.app\` — A/B comparison\n\`@ghostship https://github.com/org/repo/pull/42\` — PR review`}
-        </Text>
-      </Card>
-    );
-    return;
+  const history = await toAiMessages([message]);
+  if (contextHint) {
+    history[history.length - 1] = {
+      ...history[history.length - 1],
+      content: history[history.length - 1].content + contextHint,
+    };
   }
 
-  if (urls.length === 1) {
-    const url = urls[0];
-    const parsed = parseVercelPreviewUrl(url);
-
-    if (parsed.productionUrl) {
-      // Vercel preview URL → A/B comparison with auto-detected production
-      await thread.startTyping("👻 Deploying phantom users... comparing preview vs production");
-      try {
-        const report = await runGhostshipAgent(message.text, { pr });
-        await thread.post(formatReportCard(report));
-      } catch (err) {
-        console.error("GhostShip pipeline error:", err);
-        await thread.post(
-          `${emoji.warning} ${
-            err instanceof Error ? err.message : "Something went wrong"
-          }`
-        );
-      }
-    } else {
-      // Not a Vercel preview → single page review
-      await thread.startTyping("👻 Reviewing page... deploying 5 phantom users");
-      try {
-        const review = await reviewPage(url);
-        await thread.post(formatPageReview(review));
-      } catch (err) {
-        console.error("GhostShip page review error:", err);
-        await thread.post(
-          `${emoji.warning} ${
-            err instanceof Error ? err.message : "Something went wrong"
-          }`
-        );
-      }
-    }
-    return;
-  }
-
-  // 2+ URLs → A/B comparison via the agent
-  await thread.startTyping("👻 Comparing pages... deploying 5 phantom users");
+  await thread.startTyping("👻 Thinking...");
   try {
-    const report = await runGhostshipAgent(message.text, { pr });
-    await thread.post(formatReportCard(report));
+    const agent = createAgent(thread);
+    const result = await agent.stream({ prompt: history });
+    await thread.post(result.fullStream);
   } catch (err) {
-    console.error("GhostShip pipeline error:", err);
+    console.error("GhostShip error:", err);
     await thread.post(
-      `${emoji.warning} ${
-        err instanceof Error ? err.message : "Something went wrong"
-      }`
+      `${emoji.warning} ${err instanceof Error ? err.message : "Something went wrong"}`
     );
   }
 });
@@ -296,18 +133,15 @@ bot.onMemberJoinedChannel(async (event) => {
   );
 });
 
-// Handle direct messages — AI conversation by default
-// This fires on every DM, regardless of subscription status
+// Handle direct messages — conversational GhostShip agent
 bot.onDirectMessage(async (_thread, message, channel) => {
-  await channel.startTyping("Thinking...");
+  await channel.startTyping("👻 Thinking...");
   let history: AiMessage[];
   try {
     const messages: (typeof message)[] = [];
     for await (const msg of channel.messages) {
       messages.push(msg);
-      if (messages.length >= 20) {
-        break;
-      }
+      if (messages.length >= 20) break;
     }
     history =
       messages.length > 0
@@ -317,13 +151,14 @@ bot.onDirectMessage(async (_thread, message, channel) => {
     history = await toAiMessages([message]);
   }
   try {
+    const agent = createAgent(channel);
     const result = await agent.stream({ prompt: history });
     await channel.post(result.fullStream);
   } catch (err) {
-    console.error("Error in DM AI response:", err);
+    console.error("GhostShip DM error:", err);
     await channel.post(
-      `${emoji.warning} Error: ${
-        err instanceof Error ? err.message : "Unknown error"
+      `${emoji.warning} ${
+        err instanceof Error ? err.message : "Something went wrong"
       }`
     );
   }
@@ -840,146 +675,50 @@ bot.onNewMessage(/help/i, async (thread, message) => {
   );
 });
 
-// Handle messages in subscribed threads
+// Handle messages in subscribed threads — continue the conversation
 bot.onSubscribedMessage(async (thread, message) => {
   if (!(thread.adapter.name === "telegram" || message.isMention)) {
     return;
   }
 
-  // On GitHub: handle @mentions in subscribed threads via the agent
-  if (thread.adapter.name === "github" && message.isMention) {
-    const pr = parseGitHubThreadId(thread.id);
-    await thread.startTyping("👻 Deploying phantom users...");
-    try {
-      const report = await runGhostshipAgent(message.text, { pr });
-      await thread.post(formatReportCard(report));
-    } catch (err) {
-      console.error("GhostShip pipeline error:", err);
-      await thread.post(
-        `${emoji.warning} ${
-          err instanceof Error ? err.message : "Something went wrong"
-        }`
-      );
-    }
-    return;
+  const pr =
+    thread.adapter.name === "github"
+      ? parseGitHubThreadId(thread.id)
+      : undefined;
+  const contextHint = pr
+    ? `\n[Context: GitHub PR #${pr.prNumber} on ${pr.owner}/${pr.repo}]`
+    : "";
+
+  const history = await getHistory(thread);
+  // Append current message if not already in history
+  if (
+    history.length === 0 ||
+    history[history.length - 1].content !== message.text
+  ) {
+    history.push({
+      role: "user" as const,
+      content: message.text + contextHint,
+    });
   }
 
-  // Get thread state to check AI mode
-  const threadState = await thread.state;
-
-  // Check if user wants to disable AI mode
-  if (DISABLE_AI_REGEX.test(message.text)) {
-    await thread.setState({ aiMode: false });
-    await thread.post(`${emoji.check} AI mode disabled for this thread.`);
-    return;
-  }
-
-  // Check if user wants to enable AI mode
-  if (ENABLE_AI_REGEX.test(message.text)) {
-    await thread.setState({ aiMode: true });
-    await thread.post(`${emoji.sparkles} AI mode enabled for this thread!`);
-    return;
-  }
-
-  // If AI mode is enabled (or this is a DM), use the AI agent
-  if (threadState?.aiMode) {
-    // Build conversation history: try fetchMessages first, then fall back to
-    // stored history in thread state (for platforms without message history API)
-    let history: AiMessage[];
-    try {
-      const result = await thread.adapter.fetchMessages(thread.id, {
-        limit: 20,
-      });
-      if (result.messages.length > 0) {
-        history = await toAiMessages(result.messages);
-      } else {
-        // No messages from API — use stored history + current message
-        history = [
-          ...(threadState?.history ?? []),
-          { role: "user" as const, content: message.text },
-        ];
-      }
-    } catch {
-      // fetchMessages not supported — use stored history + current message
-      history = [
-        ...(threadState?.history ?? []),
-        { role: "user" as const, content: message.text },
-      ];
-    }
-
-    await thread.startTyping("Thinking...");
-    try {
-      const result = await agent.stream({ prompt: history });
-      await thread.post(result.fullStream);
-      const responseText = await result.text;
-      // Persist updated history for platforms without message history API
-      history.push({ role: "assistant", content: responseText });
-      await thread.setState({ history });
-    } catch (err) {
-      console.error("Error in AI response:", err);
-      await thread.post(
-        `${emoji.warning} Error: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
-    }
-    return;
-  }
-
-  // Check if user wants a DM
-  if (DM_ME_REGEX.test(message.text.trim())) {
-    try {
-      const dmThread = await bot.openDM(message.author);
-      await dmThread.post(
-        <Card title={`${emoji.speech_bubble} Private Message`}>
-          <Text>{`Hi ${message.author.fullName}! You requested a DM from the thread.`}</Text>
-          <Divider />
-          <Text>This is a private conversation between us.</Text>
-        </Card>
-      );
-      await thread.post(`${emoji.check} I've sent you a DM!`);
-    } catch (err) {
-      await thread.post(
-        `${emoji.warning} Sorry, I couldn't send you a DM. Error: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
-    }
-    return;
-  }
-
-  // Check if message has attachments
-  if (message.attachments && message.attachments.length > 0) {
-    const attachmentInfo = message.attachments
-      .map(
-        (a) =>
-          `- ${a.name || "unnamed"} (${a.type}, ${a.mimeType || "unknown"})`
-      )
-      .join("\n");
-
-    await thread.post(
-      <Card title={`${emoji.eyes} Attachments Received`}>
-        <Text>{`You sent ${message.attachments.length} file(s):`}</Text>
-        <Text>{attachmentInfo}</Text>
-      </Card>
-    );
-    return;
-  }
-
-  // Default response for other messages
-  await thread.startTyping();
-  await delay(1000);
-  const response = await thread.post(`${emoji.thinking} Processing...`);
+  await thread.startTyping("👻 Thinking...");
   try {
-    await delay(2000);
-    await response.edit(`${emoji.eyes} Just a little bit...`);
-    await delay(1000);
-    await response.edit(`${emoji.check} Thanks for your message!`);
-  } catch {
-    // Some platforms (WhatsApp) don't support editing — send a follow-up instead
-    await thread.post(`${emoji.check} Thanks for your message!`);
+    const agent = createAgent(thread);
+    const result = await agent.stream({ prompt: history });
+    await thread.post(result.fullStream);
+    // Persist history for platforms without fetchMessages
+    const responseText = await result.text;
+    history.push({ role: "assistant", content: responseText });
+    await thread.setState({ history });
+  } catch (err) {
+    console.error("GhostShip error:", err);
+    await thread.post(
+      `${emoji.warning} ${err instanceof Error ? err.message : "Something went wrong"}`
+    );
   }
 });
+
+/* ── Legacy demo handlers below (kept for button actions, modals, reactions) ── */
 
 // Handle emoji reactions - respond with a matching emoji or message
 bot.onReaction(["thumbs_up", "heart", "fire", "rocket"], async (event) => {
