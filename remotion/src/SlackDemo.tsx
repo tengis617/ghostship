@@ -382,7 +382,7 @@ export const SlackDemo: React.FC = () => {
             }}
           >
             {/* User typing message */}
-            <Sequence from={0} layout="none" premountFor={fps}>
+            <Sequence from={0} layout="none">
               <Message
                 avatar={<UserAvatar />}
                 name="Jane Developer"
@@ -447,7 +447,7 @@ export const SlackDemo: React.FC = () => {
 
             {/* Bot thinking / response */}
             {(showThinking || showResults) && (
-              <Sequence from={BOT_THINKING} layout="none" premountFor={fps}>
+              <Sequence from={BOT_THINKING} layout="none">
                 <Message
                   avatar={
                     <GhostShipLogo size={36} style={{ borderRadius: 8 }} />
