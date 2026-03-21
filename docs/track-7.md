@@ -1,4 +1,4 @@
-# Track 7: Web UI Shell
+# Track 7: Landing Page
 
 ## Parallel Execution Notice
 
@@ -13,7 +13,7 @@
 
 ## Before You Start
 
-1. Read `PLAN.md` — understand the full project context, dependency graph, and where your track fits
+1. Read `PLAN.md` — understand the full project context and where your track fits
 2. Read `PROBLEM_STATEMENT.md` — understand the product positioning ("Phantom users for every pull request", "Lighthouse for UX")
 3. Read `progress.txt` — see what's done and what's pending for your track
 
@@ -22,139 +22,83 @@
 ## Your Task
 
 **Modify:** `src/app/page.tsx` (REPLACE existing content entirely)
-**Create:** `src/components/report-card.tsx`
 
-Build the web interface for GhostShip — a landing page with URL input form and a report card component that displays evaluation results.
+Build a minimal, beautiful landing page for GhostShip. This is NOT a full app UI — it's a single-section brand page with the logo and headline. The Slack bot is the primary product interface.
 
 ---
 
 ## Skills to Use
 
 Read and follow guidance from these skills **BEFORE writing any code**:
-- `.agents/skills/high-end-visual-design/SKILL.md` — **CRITICAL**: follow these rules for premium visual design. This is a Vercel hackathon — design quality is a judging criterion.
-- `.agents/skills/design-taste-frontend/SKILL.md` — **CRITICAL**: UI/UX engineering guidelines, avoid common LLM design biases
+- `.agents/skills/high-end-visual-design/SKILL.md` — **CRITICAL**: premium visual design rules
+- `.agents/skills/design-taste-frontend/SKILL.md` — **CRITICAL**: UI/UX engineering, avoid LLM design biases
 - `.agents/skills/web-design-guidelines/SKILL.md` — web interface best practices
 - `.agents/skills/vercel-react-best-practices/SKILL.md` — Next.js/React patterns
 - `.agents/skills/full-output-enforcement/SKILL.md` — follow output quality guidelines
 
 ---
 
-## Types (for the report card)
+## Existing Assets
 
-Define these locally in your components (do NOT import from src/lib/ — that file is being created by another agent):
+The logo is at `public/images/logo-square.png`:
+- Pirate ghost character (light cyan/ice blue on dark background)
+- Winking ghost wearing a pirate hat with skull & crossbones
+- Brand colors: dark background (#1a1a2e or near-black), ice blue ghost
 
-```typescript
-interface PersonaResult {
-  personaId: string;
-  personaName: string;
-  personaEmoji: string;
-  preference: "production" | "preview";
-  confidence: "high" | "medium" | "low";
-  rationale: string;
-  productionPros: string[];
-  productionCons: string[];
-  previewPros: string[];
-  previewCons: string[];
-}
-
-interface GhostshipReport {
-  winner: "production" | "preview" | "inconclusive";
-  confidence: number; // 0-100
-  preferenceSplit: { production: number; preview: number };
-  personas: PersonaResult[];
-  summary: string;
-  previewUrl: string;
-  productionUrl: string;
-}
-```
+Also available:
+- `public/images/og-image.jpg` — social share image (same ghost, wider format)
+- `public/favicon.ico`, `public/apple-touch-icon.png` — favicons (already set up)
 
 ---
 
-## File 1: `src/app/page.tsx` (REPLACE existing)
+## Page Requirements
 
-Requirements:
-- `"use client"` directive at top
-- **Dark theme** — bg-neutral-950 or similar dark background, light text
-- Must include `src/app/layout.tsx` — check if it already has a layout. If so, only replace page.tsx content.
+### Single Section: Logo + Headline
 
-### Hero Section
-- Title: **"ghostship"** (lowercase, bold, large)
-- Subtitle: **"Phantom users for every pull request."**
-- One-liner: *"Every Vercel preview is already an A/B test. It just has zero users."*
+**Layout:** Centered vertically and horizontally on the page. Full viewport height.
 
-### Input Form
-- **Preview URL** field (required) — placeholder: `"https://my-app-git-feature.vercel.app/pricing"`
-- **Production URL** field (optional) — placeholder: `"https://my-app.vercel.app/pricing (auto-detected if empty)"`
-- **"Deploy Phantom Users"** submit button — styled, prominent, with ghost/ship aesthetic
+**Content (top to bottom):**
+1. Logo image — `public/images/logo-square.png` — sized appropriately (not too large, maybe 120-160px)
+2. Title: **"ghostship"** — lowercase, bold
+3. Subtitle: **"Phantom users for every pull request."**
+4. One-liner (smaller text): *"Every Vercel preview is already an A/B test. It just has zero users."*
 
-### State Management
-```typescript
-const [previewUrl, setPreviewUrl] = useState("");
-const [productionUrl, setProductionUrl] = useState("");
-const [loading, setLoading] = useState(false);
-const [report, setReport] = useState<GhostshipReport | null>(null);
-const [error, setError] = useState<string | null>(null);
-```
+**That's it.** No forms, no buttons, no navigation. Just the brand statement.
 
-### Submit Handler
-- POST to `/api/evaluate` with `{ previewUrl, productionUrl: productionUrl || undefined }`
-- While loading: show animated loading state ("Boarding your preview... deploying 5 phantom users")
-- On success: render `<ReportCard report={result} />`
-- On error: show error message
+### Design Direction
+- Dark background matching the logo aesthetic (#1a1a2e or neutral-950)
+- Light text (white or light gray)
+- The logo already has a dark background, so it should blend seamlessly
+- Clean, minimal typography — let the logo and copy breathe
+- Subtle polish only (maybe a soft glow behind the logo, nothing flashy)
+- This should feel like a high-end product landing page, not a hackathon project
+- Responsive (centered on both desktop and mobile)
 
-### Design Notes
-- Clean, polished — this is a **Vercel hackathon**, design quality is a judging criterion
-- Responsive (desktop + mobile)
+### Technical
+- `"use client"` directive is NOT needed — this can be a server component (it's static)
+- Use `next/image` for the logo (Image component with proper alt text)
 - No external UI libraries — just Tailwind utility classes
-- Ghost/phantom aesthetic: dark backgrounds, subtle glows, clean monospace-accented typography
+- Check `src/app/layout.tsx` for existing layout wrapper before adding body/html tags
 
 ---
 
-## File 2: `src/components/report-card.tsx`
+## STRETCH GOAL (only if time permits, bury at bottom)
 
-Requirements:
-- `"use client"` directive
-- Props: `{ report: GhostshipReport }`
-
-### Layout
-
-**Header Bar:**
-- Winner announcement: "Preview wins 4-1" or "Production wins 3-2" or "Inconclusive"
-- Confidence percentage badge (color-coded: green high, yellow medium, red low)
-- Vote split visualization
-
-**Persona Cards (grid or stacked list):**
-Each card shows:
-- Persona emoji + name (e.g., "🛍️ Budget-Conscious Buyer")
-- Preference badge — "Prefers Preview" (green) or "Prefers Production" (amber)
-- Confidence level indicator
-- Rationale text in italic quote style
-- Pros/cons (can be collapsed or shown inline)
-
-**Summary Section:**
-- `report.summary` text
-- URLs compared (preview vs production)
-
-### Design Notes
-- Dark theme consistent with page.tsx
-- The report card is the **demo money shot** — make it visually striking
-- Color scheme:
-  - Green/emerald for "preview wins"
-  - Amber/orange for "production wins"
-  - Gray for "inconclusive"
-- Subtle animations or transitions welcome (fade-in on load)
+If we have time later, we may add a URL comparison form below the hero. Don't build it now — just make sure the page structure allows adding a section below the hero later. A simple `<main>` wrapper with the hero as the first child is enough.
 
 ---
 
 ## Verification
 
-After creating both files:
+After modifying the file:
 ```bash
 pnpm typecheck
 ```
 
 Then confirm visually:
-- `localhost:3000` shows the GhostShip page with dark theme and input form
+- `localhost:3000` shows the GhostShip landing page
+- Logo renders, headline is readable
+- Looks polished and intentional, not like a default template
 - No console errors in browser
 
 ---
@@ -162,3 +106,6 @@ Then confirm visually:
 ## After Completion
 
 Update `progress.txt` — mark all Track 7 tasks as `[x]` with timestamps.
+
+FILES YOU MAY MODIFY: `src/app/page.tsx` (REPLACE)
+FILES YOU MAY NOT TOUCH: anything in src/lib/, src/app/api/, src/components/, or any other files

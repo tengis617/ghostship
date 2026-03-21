@@ -20,7 +20,7 @@ Phase 0 is DONE. The scaffold is far more complete than originally planned:
 - Screenshot service (using local Puppeteer via `puppeteer-core` + `@sparticuz/chromium` — no external API needed)
 - GhostShip core pipeline (personas, evaluation, orchestrator)
 - GhostShip-specific bot handlers in bot.tsx
-- Web UI (page.tsx is still the example landing page)
+- Landing page (page.tsx is still the example page — needs logo + headline)
 - PROBLEM_STATEMENT.md rewrite (drafted, needs to be applied)
 
 ---
@@ -41,8 +41,8 @@ Track 2: Screenshot Service ─────────────────�
 Track 3: Gemini Evaluation ─────────────────────────────┘       │   (src/lib/bot.tsx)
   (src/lib/evaluate.ts)                                         │
                                                                 ├─→ Track 6: Web API Route
-Track 7: Web UI (can start with mock data) ─────────────────────┘   (src/app/api/evaluate/)
-  (src/app/page.tsx, src/components/)
+Track 7: Landing Page ──────────────────────────────────────────┘   (src/app/api/evaluate/)
+  (src/app/page.tsx)
 ```
 
 ### Parallel Batch 1 (can all run simultaneously)
@@ -52,7 +52,7 @@ Track 7: Web UI (can start with mock data) ────────────�
 | **1: Types + Personas** | `src/lib/personas.ts` | Agent A | `pnpm typecheck` passes |
 | **2: Screenshot Service** | `src/lib/screenshot.ts` | Agent B | Test script saves PNG to `/tmp/test-screenshot.png` via local Puppeteer, file exists and is >10KB |
 | **3: Gemini Evaluation** | `src/lib/evaluate.ts` | Agent C | Test script prints valid JSON matching PersonaResult schema to stdout |
-| **7: Web UI shell** | `src/app/page.tsx`, `src/components/report-card.tsx` | Agent D | Page renders at localhost:3000 with input form visible |
+| **7: Landing Page** | `src/app/page.tsx` | Agent D | Page renders at localhost:3000 with logo + headline |
 
 **Pre-requisite for Batch 1:** Agree on shared types in `src/lib/personas.ts` first (5 min), then all tracks can diverge.
 
@@ -68,9 +68,8 @@ Track 7: Web UI (can start with mock data) ────────────�
 
 | Track | Files | Verification |
 |-------|-------|-------------|
-| **Wire Web UI to API** | `src/app/page.tsx` | Paste URL in browser → see report card render |
-| **Error handling** | All files | Invalid URL → graceful error in Slack and web |
-| **Landing page** | `src/app/page.tsx` | Hero section visible, polished design |
+| **Error handling** | All files | Invalid URL → graceful error in Slack |
+| **(Stretch) Web UI compare** | `src/app/page.tsx`, `src/app/api/evaluate/route.ts`, `src/components/report-card.tsx` | Paste 2 URLs → see report card (only if time permits) |
 | **Deploy** | Vercel | Production URL works, Slack events point to prod |
 
 ---
@@ -83,14 +82,13 @@ src/lib/personas.ts          # Track 1 — types + 5 persona definitions
 src/lib/screenshot.ts         # Track 2 — Puppeteer screenshot service (puppeteer-core + @sparticuz/chromium)
 src/lib/evaluate.ts           # Track 3 — Gemini multimodal evaluation
 src/lib/agent.ts              # Track 4 — orchestrator
-src/app/api/evaluate/route.ts # Track 6 — web API endpoint
-src/components/report-card.tsx # Track 7 — report card component
+src/app/api/evaluate/route.ts # Track 6 — web API endpoint (stretch goal)
 ```
 
 Files that will be **modified**:
 ```
 src/lib/bot.tsx               # Track 5 — replace example handlers with GhostShip
-src/app/page.tsx              # Track 7 — replace example page with GhostShip web UI
+src/app/page.tsx              # Track 7 — replace example page with landing page (logo + headline)
 PROBLEM_STATEMENT.md          # Content — already drafted
 ```
 
@@ -123,9 +121,9 @@ ls -la /tmp/test.png
 node -e "..." # test script that evaluates one persona with 2 test images
 # Expected: valid JSON printed to stdout
 
-# Track 7: Web UI renders
+# Track 7: Landing page renders
 curl -s localhost:3000 | head -20
-# Expected: HTML with GhostShip content
+# Expected: HTML with ghostship logo + headline
 ```
 
 ### Batch 2 Verification
@@ -181,7 +179,7 @@ vercel deploy --prod
 | Gemini rate limited | 429 errors | Reduce to 3 personas, add exponential backoff |
 | Chat SDK issues | Unexpected behavior | Bot logic is just JS functions — can fall back to raw Slack API calls |
 | Pipeline too slow (>60s) | Gemini calls stack up | Fire all 5 persona calls truly in parallel with `Promise.all`, reduce persona count |
-| Web UI takes too long | Time crunch | Ship with Slack-only, landing page is just marketing text |
+| Web compare UI takes too long | Time crunch | Ship with landing page only, Slack bot is the primary demo |
 
 ---
 

@@ -24,13 +24,16 @@
     "@chat-adapter/telegram": "4.20.2",
     "@chat-adapter/whatsapp": "4.20.2",
     "@sparticuz/chromium": "^143.0.4",
+    "@tailwindcss/postcss": "^4.2.2",
     "ai": "^6.0.134",
     "chat": "4.20.2",
     "next": "^16.2.1",
+    "postcss": "^8.5.8",
     "puppeteer-core": "^24.40.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "redis": "^5.11.0",
+    "tailwindcss": "^4.2.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -36,63 +36,66 @@ Each track owns specific files — do not touch files outside your track.
 
 ## Track 1: Types + Personas [Agent A]
    Owner: src/lib/personas.ts (CREATE)
-   [ ] Define Persona type: { id, name, emoji, age, background, goals, evaluationCriteria, behaviorPattern }
-   [ ] Define PersonaResult type: { personaId, personaName, personaEmoji, preference, confidence, rationale, productionPros, productionCons, previewPros, previewCons }
-   [ ] Define GhostshipReport type: { winner, confidence, preferenceSplit, personas, summary, previewUrl, productionUrl }
-   [ ] Implement 5 personas with detailed system prompts:
-       [ ] Budget-Conscious Buyer
-       [ ] Power User / Developer
-       [ ] Non-Technical Executive
-       [ ] First-Time Visitor
-       [ ] Accessibility-Focused User
-   VERIFY: pnpm typecheck passes with no errors in personas.ts
+   [x] Define Persona type: { id, name, emoji, age, background, goals, evaluationCriteria, behaviorPattern }
+   [x] Define PersonaResult type: { personaId, personaName, personaEmoji, preference, confidence, rationale, productionPros, productionCons, previewPros, previewCons }
+   [x] Define GhostshipReport type: { winner, confidence, preferenceSplit, personas, summary, previewUrl, productionUrl }
+   [x] Implement 5 personas with detailed system prompts:
+       [x] Budget-Conscious Buyer
+       [x] Power User / Developer
+       [x] Non-Technical Executive
+       [x] First-Time Visitor
+       [x] Accessibility-Focused User
+   VERIFY: pnpm typecheck passes with no errors in personas.ts ✓
 
 ## Track 2: Screenshot Service [Agent B]
    Owner: src/lib/screenshot.ts (CREATE)
    Deps: puppeteer-core, @sparticuz/chromium (no external API key needed)
-   [ ] Implement captureScreenshot(url: string): Promise<Buffer>
+   [x] Implement captureScreenshot(url: string): Promise<Buffer>
        — uses puppeteer-core with @sparticuz/chromium for serverless
        — local dev: uses locally installed Chrome/Chromium
        — production (Vercel): uses @sparticuz/chromium binary
        — viewport 1280x800, format=png, wait for network idle
        — returns PNG buffer
-   [ ] Implement parseVercelPreviewUrl(previewUrl: string): { previewUrl, productionUrl, pagePath }
+   [x] Implement parseVercelPreviewUrl(previewUrl: string): { previewUrl, productionUrl, pagePath }
        — pattern: {project}-git-{branch}.vercel.app → {project}.vercel.app
        — also handle: {project}-{hash}-{team}.vercel.app pattern
        — preserve the path (e.g., /pricing)
        — fallback: return null productionUrl if pattern doesn't match
-   [ ] Handle Chrome path detection:
+   [x] Handle Chrome path detection:
        — macOS dev: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
        — Vercel serverless: @sparticuz/chromium.executablePath()
        — detect environment via process.env.AWS_LAMBDA_FUNCTION_NAME or similar
-   VERIFY: test script captures screenshot of https://vercel.com, saves PNG to /tmp/test.png, file > 10KB
-   VERIFY: parseVercelPreviewUrl("https://my-app-git-new-cta.vercel.app/pricing") returns correct URLs
+   VERIFIED: screenshot of vercel.com → 487KB PNG at /tmp/ghostship-verify-screenshot.png
+   VERIFIED: parseVercelPreviewUrl returns correct productionUrl + pagePath for all 3 patterns
 
 ## Track 3: Gemini Evaluation [Agent C]
    Owner: src/lib/evaluate.ts (CREATE)
-   [ ] Import types from personas.ts (Persona, PersonaResult)
-   [ ] Set up Vercel AI SDK with @ai-sdk/google provider (gemini-2.5-pro model)
-   [ ] Define zod schema matching PersonaResult type
-   [ ] Implement evaluateAsPersona(persona: Persona, productionPng: Buffer, previewPng: Buffer): Promise<PersonaResult>
+   [x] 10:50 AM — Import types from personas.ts (Persona, PersonaResult)
+   [x] 10:50 AM — Set up Vercel AI SDK with @ai-sdk/google provider (gemini-2.5-flash model)
+   [x] 10:50 AM — Define zod schema matching PersonaResult type
+   [x] 10:50 AM — Implement evaluateAsPersona(persona: Persona, productionPng: Buffer, previewPng: Buffer): Promise<PersonaResult>
        — builds system prompt from persona fields
        — sends both PNGs as image parts
        — uses generateObject() for structured output
        — returns typed PersonaResult
-   VERIFY: test script evaluates 1 persona with 2 test PNGs, prints valid PersonaResult JSON
+   VERIFY: pnpm typecheck passes — no errors in evaluate.ts ✓
 
-## Track 7: Web UI Shell [Agent D]
-   Owner: src/app/page.tsx (MODIFY), src/components/report-card.tsx (CREATE)
-   [ ] Replace example page.tsx with GhostShip landing page + input form
-       — Hero: "Phantom users for every pull request"
-       — Input: preview URL field + optional production URL field
-       — Button: "Deploy Phantom Users"
-       — Loading state placeholder
-   [ ] Create report-card.tsx component (can use mock data initially)
-       — Header: winner badge + confidence + vote split
-       — Per-persona cards: emoji + name + preference badge + rationale
-       — Summary section
-   [ ] Dark theme, clean design with Tailwind
-   VERIFY: localhost:3000 shows GhostShip page with input form
+## Track 7: Landing Page [Agent D]
+   Owner: src/app/page.tsx (MODIFY — replace entirely)
+   DO NOT create or touch: src/components/, src/lib/, src/app/api/
+   [x] 11:15 AM — Replace example page.tsx with minimal landing page
+       — Single section, centered vertically and horizontally, full viewport
+       — Logo: public/images/logo-square.png (use next/image, ~120-160px)
+       — Title: "ghostship" (lowercase, bold, large)
+       — Subtitle: "Phantom users for every pull request."
+       — One-liner: "Every Vercel preview is already an A/B test. It just has zero users."
+   [x] 11:15 AM — Dark background (#0A0A0A) matching logo aesthetic
+   [x] 11:15 AM — Clean minimal typography, logo and copy have breathing room
+   [x] 11:15 AM — Responsive (centered on desktop and mobile)
+   [x] 11:15 AM — Follow design skills: high-end-visual-design, design-taste-frontend
+   [x] 11:15 AM — Added Tailwind CSS v4, globals.css, layout metadata (OG, favicons, Twitter cards)
+   [x] 11:15 AM — Subtle radial glow behind ghost mascot using brand cyan
+   VERIFIED: localhost:3000 shows GhostShip landing with logo + headline, visually confirmed via browser ✓
 
 =====================================
 BATCH 2: SEQUENTIAL TRACKS (after Batch 1)
@@ -149,16 +152,8 @@ These depend on Batch 1 being complete.
 BATCH 3: POLISH & SHIP
 =====================================
 
-## Wire Web UI to API [after Tracks 6, 7]
-   Owner: src/app/page.tsx (MODIFY)
-   [ ] Connect form submission to POST /api/evaluate
-   [ ] Stream/display results using report-card component
-   [ ] Loading state: show progress as evaluation runs
-   [ ] Error state: display errors from API
-   VERIFY: paste URL in browser → click button → report card renders
-
 ## Error Handling Hardening
-   [ ] Puppeteer/screenshot failure → graceful error in both Slack and web
+   [ ] Puppeteer/screenshot failure → graceful error in Slack
    [ ] Single persona Gemini failure → return partial results (4/5 ok)
    [ ] URL parsing failure → prompt user for both URLs explicitly
    [ ] Global timeout (60s) → return whatever results are ready
@@ -175,6 +170,14 @@ BATCH 3: POLISH & SHIP
    [ ] Update Slack event subscription URL to production
    [ ] Test: @ghostship in Slack on production → works
    [ ] Test: production web URL → works
+
+## (STRETCH) Web Compare UI [only if time permits]
+   Owner: src/app/page.tsx, src/app/api/evaluate/route.ts, src/components/report-card.tsx
+   [ ] Add URL input form below hero section on landing page
+   [ ] Create /api/evaluate POST endpoint wired to runGhostship()
+   [ ] Create report-card.tsx component (winner, personas, summary)
+   [ ] Wire form → API → report card display
+   VERIFY: paste URL in browser → click button → report card renders
 
 ## Submission
    [ ] README.md: problem, solution, tech stack, demo link

@@ -1,100 +1,44 @@
+import Image from "next/image";
+
 export default function Home() {
   return (
-    <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
-      <h1>ghostship</h1>
-      <p>This is the imported Next.js Chat SDK example, rebranded for ghostship.</p>
+    <main>
+      <section className="flex min-h-[100dvh] flex-col items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-8 text-center">
+          {/* Logo with subtle glow */}
+          <div className="relative">
+            <div
+              className="absolute inset-0 scale-150 rounded-full blur-3xl"
+              style={{ background: "radial-gradient(circle, var(--color-ghost-dim), transparent 70%)" }}
+            />
+            <Image
+              src="/images/logo-square.png"
+              alt="GhostShip — pirate ghost mascot"
+              width={144}
+              height={144}
+              priority
+              className="relative z-10"
+            />
+          </div>
 
-      <h2>Webhook Endpoints</h2>
-      <ul>
-        <li>
-          <code>/api/webhooks/slack</code> - Slack events
-        </li>
-        <li>
-          <code>/api/webhooks/teams</code> - Microsoft Teams events
-        </li>
-        <li>
-          <code>/api/webhooks/gchat</code> - Google Chat events
-        </li>
-        <li>
-          <code>/api/webhooks/discord</code> - Discord interaction events
-        </li>
-        <li>
-          <code>/api/webhooks/telegram</code> - Telegram bot updates
-        </li>
-        <li>
-          <code>/api/webhooks/github</code> - GitHub PR comment events
-        </li>
-        <li>
-          <code>/api/webhooks/linear</code> - Linear issue comment events
-        </li>
-      </ul>
+          {/* Title */}
+          <h1 className="text-5xl font-black tracking-tighter text-white md:text-7xl">
+            ghostship
+          </h1>
 
-      <h2>Features</h2>
-      <ul>
-        <li>
-          <strong>AI Mode</strong> - Mention the bot with &quot;AI&quot; to
-          enable AI assistant mode (uses Claude)
-        </li>
-        <li>
-          <strong>Rich Cards</strong> - Interactive cards with buttons
-        </li>
-        <li>
-          <strong>Reactions</strong> - React to bot messages and it reacts back
-        </li>
-        <li>
-          <strong>DM Support</strong> - Say &quot;DM me&quot; to get a direct
-          message
-        </li>
-      </ul>
+          {/* Subtitle */}
+          <p className="max-w-lg text-lg font-medium tracking-tight text-[#EAEAEA] md:text-xl">
+            Phantom users for every pull request.
+          </p>
 
-      <h2>Configuration</h2>
-      <p>Set the following environment variables to enable each platform:</p>
-
-      <h3>Slack</h3>
-      <pre>
-        {`SLACK_BOT_TOKEN=xoxb-...
-SLACK_SIGNING_SECRET=...`}
-      </pre>
-
-      <h3>Microsoft Teams</h3>
-      <pre>
-        {`TEAMS_APP_ID=...
-TEAMS_APP_PASSWORD=...`}
-      </pre>
-
-      <h3>Google Chat</h3>
-      <pre>{`GOOGLE_CHAT_CREDENTIALS={"type":"service_account",...}`}</pre>
-
-      <h3>Discord</h3>
-      <pre>
-        {`DISCORD_BOT_TOKEN=...
-DISCORD_PUBLIC_KEY=...
-DISCORD_APPLICATION_ID=...`}
-      </pre>
-
-      <h3>Telegram</h3>
-      <pre>
-        {`TELEGRAM_BOT_TOKEN=...
-TELEGRAM_WEBHOOK_SECRET_TOKEN=...`}
-      </pre>
-
-      <h3>GitHub</h3>
-      <pre>
-        {`# PAT auth (simple)
-GITHUB_TOKEN=ghp_...
-GITHUB_WEBHOOK_SECRET=...
-
-# OR GitHub App auth (recommended)
-GITHUB_APP_ID=...
-GITHUB_PRIVATE_KEY=...
-GITHUB_WEBHOOK_SECRET=...`}
-      </pre>
-
-      <h3>Linear</h3>
-      <pre>
-        {`LINEAR_API_KEY=lin_api_...
-LINEAR_WEBHOOK_SECRET=...`}
-      </pre>
+          {/* One-liner */}
+          <p className="max-w-md font-mono text-sm tracking-wide text-[#666666]">
+            Every Vercel preview is already an A/B test.
+            <br />
+            It just has zero users.
+          </p>
+        </div>
+      </section>
     </main>
   );
 }
