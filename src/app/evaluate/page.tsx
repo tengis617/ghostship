@@ -542,7 +542,7 @@ function EvaluateView() {
     return () => {
       abortController.abort();
     };
-  }, [handleStreamEvent, resetEvaluation, url]);
+  }, [resetEvaluation, url]);
 
   if (!url) {
     return null;
