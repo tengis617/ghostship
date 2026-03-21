@@ -12,8 +12,9 @@ const tiers = [
     name: "Free",
     price: "$0",
     period: "/mo",
-    description: "Get started with phantom evaluations on your previews.",
-    cta: "Get Started",
+    description:
+      "See how real personas react to your changes — before your users do.",
+    cta: "See what your users think",
     highlighted: false,
     features: [
       "10 phantom evaluations/month",
@@ -26,9 +27,10 @@ const tiers = [
     name: "Pro",
     price: "$49",
     period: "/mo",
-    description: "Unlimited evaluations with the full persona panel.",
-    cta: "Start Free Trial",
-    highlighted: true,
+    description:
+      "Move fast without breaking trust. Validate every PR automatically.",
+    cta: "Ship with confidence",
+    highlighted: false,
     features: [
       "Unlimited evaluations",
       "All 5 personas",
@@ -41,9 +43,10 @@ const tiers = [
     name: "Enterprise",
     price: "Custom",
     period: "",
-    description: "For teams that ship dozens of experiments per week.",
-    cta: "Contact Sales",
-    highlighted: false,
+    description:
+      "Your experimentation program, supercharged with phantom intelligence.",
+    cta: "Scale your experimentation",
+    highlighted: true,
     features: [
       "Everything in Pro",
       "Custom persona panels (20+)",
@@ -51,6 +54,27 @@ const tiers = [
       "SLA & dedicated support",
       "API access",
     ],
+  },
+];
+
+const testimonials = [
+  {
+    quote:
+      "GhostShip caught a conversion-killing layout change before it reached our users. Saved us weeks of damage.",
+    name: "Mira Vasquez",
+    role: "Head of Product at Hatchway",
+  },
+  {
+    quote:
+      "We used to run 2 experiments a month. Now we pre-filter 30 and only A/B test the close calls.",
+    name: "Kenji Nakamura",
+    role: "Growth Lead at Driftline",
+  },
+  {
+    quote:
+      "The phantom personas spotted an accessibility issue our team missed entirely.",
+    name: "Priya Sharma",
+    role: "VP Engineering at Canopy Health",
   },
 ];
 
@@ -118,7 +142,7 @@ export default function PricingPage() {
             {/* Badge */}
             {tier.highlighted && (
               <span className="absolute -top-3 left-6 rounded-full bg-ghost px-3 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#0A0A0A]">
-                Most Popular
+                Recommended
               </span>
             )}
 
@@ -178,6 +202,29 @@ export default function PricingPage() {
             </button>
           </div>
         ))}
+      </section>
+
+      {/* Social Proof / Testimonials */}
+      <section className="mx-auto max-w-5xl px-6 pb-24">
+        <h3 className="mb-10 text-center font-mono text-xs uppercase tracking-[0.15em] text-[#555]">
+          What teams are saying
+        </h3>
+        <div className="grid gap-5 md:grid-cols-3">
+          {testimonials.map((t) => (
+            <blockquote
+              key={t.name}
+              className="flex flex-col rounded-lg border border-[#1e1e1e] bg-[#111] p-6"
+            >
+              <p className="mb-6 flex-1 text-sm leading-relaxed text-[#bbb]">
+                &ldquo;{t.quote}&rdquo;
+              </p>
+              <footer className="border-t border-[#1e1e1e] pt-4">
+                <p className="text-sm font-medium text-white">{t.name}</p>
+                <p className="font-mono text-[11px] text-[#555]">{t.role}</p>
+              </footer>
+            </blockquote>
+          ))}
+        </div>
       </section>
 
       {/* Footer */}
