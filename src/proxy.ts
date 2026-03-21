@@ -1,58 +1,31 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "redis";
-
-// Redis URL from environment
-const REDIS_URL = process.env.REDIS_URL || "";
-
-// Key for storing the preview branch URL
-const PREVIEW_BRANCH_KEY = "chat-sdk:cache:preview-branch-url";
-
-// Redis client singleton
-let redisClient: ReturnType<typeof createClient> | null = null;
-let redisConnectPromise: Promise<void> | null = null;
-
-async function getRedisClient() {
-  if (!REDIS_URL) {
-    return null;
-  }
-
-  if (!redisClient) {
-    redisClient = createClient({ url: REDIS_URL });
-    redisClient.on("error", (err) => {
-      console.error("[proxy] Redis client error:", err);
-    });
-  }
-
-  if (!redisClient.isOpen) {
-    if (!redisConnectPromise) {
-      redisConnectPromise = redisClient.connect().then(() => {});
-    }
-    await redisConnectPromise;
-  }
-
-  return redisClient;
-}
-
-/**
- * Fetch the preview branch URL from Redis.
- */
-async function getPreviewBranchUrl(): Promise<string | null> {
-  try {
-    const client = await getRedisClient();
-    if (!client) {
-      return null;
-    }
-
-    const value = await client.get(PREVIEW_BRANCH_KEY);
-    return value || null;
-  } catch (error) {
-    console.error("[proxy] Error fetching preview branch URL:", error);
-    return null;
-  }
-}
+import {
+  createSettingsAuthChallengeResponse,
+  getSettingsAuthError,
+  isAuthorizedSettingsRequest,
+  isSettingsAuthEnabled,
+} from "@/lib/admin-auth";
+import { getPreviewBranchUrl } from "@/lib/preview-branch";
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/preview-branch") ||
+    pathname.startsWith("/api/settings/preview-branch")
+  ) {
+    const authError = getSettingsAuthError();
+    if (authError) {
+      return createSettingsAuthChallengeResponse();
+    }
+
+    if (isSettingsAuthEnabled() && !isAuthorizedSettingsRequest(request.headers)) {
+      return createSettingsAuthChallengeResponse();
+    }
+  }
+
   if (process.env.NODE_ENV !== "production") {
     return NextResponse.next();
   }
@@ -60,8 +33,6 @@ export async function proxy(request: NextRequest) {
   if (process.env.VERCEL_ENV !== "production") {
     return NextResponse.next();
   }
-
-  const { pathname } = request.nextUrl;
 
   // Check if we have a preview branch configured
   const previewBranchUrl = await getPreviewBranchUrl();
@@ -85,6 +56,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/settings",
+    "/settings/preview-branch",
+    "/api/settings/preview-branch",
     // Match webhook API routes
     "/api/webhooks/:path*",
   ],

@@ -8,9 +8,6 @@ const nextConfig: NextConfig = {
     "@chat-adapter/state-memory",
     "@chat-adapter/state-redis",
   ],
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 };
 
 export default nextConfig;
