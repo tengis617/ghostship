@@ -1,218 +1,133 @@
-"use client";
+import Link from "next/link";
+import {
+  getPreviewBranchUrl,
+  isPreviewBranchPersistentStorageEnabled,
+} from "@/lib/preview-branch";
 
-import { useEffect, useState } from "react";
+type SettingsSearchParams = Promise<{
+  error?: string;
+  status?: string;
+}>;
 
-export default function SettingsPage() {
-  const [previewBranchUrl, setPreviewBranchUrl] = useState("");
-  const [savedUrl, setSavedUrl] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "saving" | "error">(
-    "loading"
-  );
-  const [error, setError] = useState<string | null>(null);
-
-  // Load current setting on mount
-  useEffect(() => {
-    fetch("/api/settings/preview-branch")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-          setStatus("error");
-        } else {
-          setPreviewBranchUrl(data.url || "");
-          setSavedUrl(data.url);
-          setStatus("idle");
-        }
-      })
-      .catch((err) => {
-        setError(err.message);
-        setStatus("error");
-      });
-  }, []);
-
-  const handleSave = async () => {
-    setStatus("saving");
-    setError(null);
-
-    try {
-      const res = await fetch("/api/settings/preview-branch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: previewBranchUrl || null }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-        setStatus("error");
-      } else {
-        setSavedUrl(data.url);
-        setStatus("idle");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setStatus("error");
-    }
-  };
-
-  const handleClear = async () => {
-    setPreviewBranchUrl("");
-    setStatus("saving");
-    setError(null);
-
-    try {
-      const res = await fetch("/api/settings/preview-branch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: null }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-        setStatus("error");
-      } else {
-        setSavedUrl(null);
-        setStatus("idle");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setStatus("error");
-    }
-  };
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: SettingsSearchParams;
+}) {
+  const [{ error, status }, savedUrl] = await Promise.all([
+    searchParams,
+    getPreviewBranchUrl(),
+  ]);
+  const isPersistentStorageEnabled = isPreviewBranchPersistentStorageEnabled();
 
   return (
-    <main
-      style={{
-        padding: "2rem",
-        fontFamily: "system-ui, sans-serif",
-        maxWidth: "600px",
-      }}
-    >
-      <h1>Settings</h1>
+    <main className="min-h-[100dvh] bg-[#0A0A0A] px-6 py-12 text-[#EAEAEA]">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-10 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-[#666]">
+              Admin
+            </p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+              Preview Branch Settings
+            </h1>
+          </div>
+          <Link
+            href="/"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-[#888] transition-colors hover:text-white"
+          >
+            Back Home
+          </Link>
+        </div>
 
-      <section style={{ marginTop: "2rem" }}>
-        <h2>Preview Branch</h2>
-        <p style={{ color: "#666", marginBottom: "1rem" }}>
-          Configure a preview branch URL to proxy webhook requests to a
-          different deployment. This allows testing a preview branch with real
-          webhook traffic.
-        </p>
+        <section className="rounded-2xl border border-[#1f1f1f] bg-[#111] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+          <h2 className="text-lg font-semibold text-white">Webhook Proxy Target</h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-[#8A8A8A]">
+            Set the preview deployment that production webhook traffic should be
+            rewritten to. Allowed hosts default to <code>.vercel.app</code>.
+          </p>
 
-        {status === "loading" ? (
-          <p>Loading...</p>
-        ) : (
-          <>
-            <div style={{ marginBottom: "1rem" }}>
+          {!isPersistentStorageEnabled && (
+            <p className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/8 px-4 py-3 text-sm text-amber-200">
+              Redis is not configured, so this value is stored locally for
+              development only.
+            </p>
+          )}
+
+          {error && (
+            <p className="mt-4 rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-200">
+              {error}
+            </p>
+          )}
+
+          {status === "saved" && !error && (
+            <p className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-sm text-emerald-200">
+              Preview branch URL saved.
+            </p>
+          )}
+
+          {status === "cleared" && !error && (
+            <p className="mt-4 rounded-lg border border-[#2a2a2a] bg-[#161616] px-4 py-3 text-sm text-[#CFCFCF]">
+              Preview branch URL cleared.
+            </p>
+          )}
+
+          <form action="/settings/preview-branch" method="post" className="mt-6 space-y-4">
+            <div>
               <label
                 htmlFor="preview-url"
-                style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: 500,
-                }}
+                className="mb-2 block font-mono text-[11px] uppercase tracking-[0.2em] text-[#777]"
               >
                 Preview Branch URL
               </label>
               <input
                 id="preview-url"
-                onChange={(e) => setPreviewBranchUrl(e.target.value)}
-                placeholder="https://your-preview-branch.vercel.app"
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  fontSize: "1rem",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  boxSizing: "border-box",
-                }}
+                name="preview-url"
                 type="url"
-                value={previewBranchUrl}
+                defaultValue={savedUrl ?? ""}
+                placeholder="https://your-preview-branch.vercel.app"
+                className="w-full rounded-lg border border-[#2A2A2A] bg-[#0D0D0D] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#555] focus:border-[#666]"
               />
             </div>
 
-            {error && (
-              <p style={{ color: "red", marginBottom: "1rem" }}>{error}</p>
-            )}
-
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div className="flex flex-wrap gap-3">
               <button
-                disabled={status === "saving"}
-                onClick={handleSave}
-                style={{
-                  padding: "0.5rem 1rem",
-                  fontSize: "1rem",
-                  backgroundColor: "#0070f3",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: status === "saving" ? "not-allowed" : "pointer",
-                  opacity: status === "saving" ? 0.7 : 1,
-                }}
-                type="button"
+                type="submit"
+                className="rounded-lg bg-[#EAEAEA] px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#0A0A0A] transition-opacity hover:opacity-90"
               >
-                {status === "saving" ? "Saving..." : "Save"}
+                Save
               </button>
 
               {savedUrl && (
                 <button
-                  disabled={status === "saving"}
-                  onClick={handleClear}
-                  style={{
-                    padding: "0.5rem 1rem",
-                    fontSize: "1rem",
-                    backgroundColor: "#dc3545",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: status === "saving" ? "not-allowed" : "pointer",
-                    opacity: status === "saving" ? 0.7 : 1,
-                  }}
-                  type="button"
+                  type="submit"
+                  name="intent"
+                  value="clear"
+                  className="rounded-lg border border-[#363636] bg-transparent px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#D6D6D6] transition-colors hover:border-[#555] hover:text-white"
                 >
                   Clear
                 </button>
               )}
             </div>
+          </form>
 
-            {savedUrl && (
-              <p
-                style={{
-                  marginTop: "1rem",
-                  padding: "0.75rem",
-                  backgroundColor: "#d4edda",
-                  borderRadius: "4px",
-                }}
-              >
-                Webhook requests are being proxied to:{" "}
-                <strong>{savedUrl}</strong>
+          <div className="mt-6 rounded-xl border border-[#1D1D1D] bg-[#0D0D0D] px-4 py-4">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">
+              Current status
+            </p>
+            {savedUrl ? (
+              <p className="mt-3 text-sm leading-6 text-[#DADADA]">
+                Production webhook traffic is being proxied to{" "}
+                <span className="break-all font-mono text-[#F5F5F5]">{savedUrl}</span>.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-[#8A8A8A]">
+                No preview branch configured. Webhooks stay on this deployment.
               </p>
             )}
-
-            {!savedUrl && status === "idle" && (
-              <p
-                style={{
-                  marginTop: "1rem",
-                  padding: "0.75rem",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: "4px",
-                }}
-              >
-                No preview branch configured. Webhooks are handled by this
-                deployment.
-              </p>
-            )}
-          </>
-        )}
-      </section>
-
-      <section style={{ marginTop: "3rem" }}>
-        <a href="/" style={{ color: "#0070f3" }}>
-          &larr; Back to Home
-        </a>
-      </section>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

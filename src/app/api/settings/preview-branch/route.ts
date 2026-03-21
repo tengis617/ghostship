@@ -1,40 +1,26 @@
-import { createClient } from "redis";
+import {
+  createSettingsAuthChallengeResponse,
+  isAuthorizedSettingsRequest,
+} from "@/lib/admin-auth";
+import { getPreviewBranchUrl, setPreviewBranchUrl } from "@/lib/preview-branch";
 
-const REDIS_URL = process.env.REDIS_URL || "";
-const PREVIEW_BRANCH_KEY = "chat-sdk:cache:preview-branch-url";
-
-// Redis client singleton
-let redisClient: ReturnType<typeof createClient> | null = null;
-let redisConnectPromise: Promise<void> | null = null;
-
-async function getRedisClient() {
-  if (!REDIS_URL) {
-    throw new Error("REDIS_URL is not configured");
+function authorize(request: Request) {
+  if (isAuthorizedSettingsRequest(request.headers)) {
+    return null;
   }
 
-  if (!redisClient) {
-    redisClient = createClient({ url: REDIS_URL });
-    redisClient.on("error", (err) => {
-      console.error("[settings] Redis client error:", err);
-    });
-  }
-
-  if (!redisClient.isOpen) {
-    if (!redisConnectPromise) {
-      redisConnectPromise = redisClient.connect().then(() => {});
-    }
-    await redisConnectPromise;
-  }
-
-  return redisClient;
+  return createSettingsAuthChallengeResponse();
 }
 
-export async function GET(): Promise<Response> {
-  try {
-    const client = await getRedisClient();
-    const value = await client.get(PREVIEW_BRANCH_KEY);
+export async function GET(request: Request): Promise<Response> {
+  const authResponse = authorize(request);
+  if (authResponse) {
+    return authResponse;
+  }
 
-    return Response.json({ url: value || null });
+  try {
+    const value = await getPreviewBranchUrl();
+    return Response.json({ url: value });
   } catch (error) {
     console.error("[settings] Error getting preview branch URL:", error);
     return Response.json(
@@ -45,31 +31,28 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const authResponse = authorize(request);
+  if (authResponse) {
+    return authResponse;
+  }
+
   try {
     const body = await request.json();
-    const { url } = body;
-
-    const client = await getRedisClient();
-
-    if (url) {
-      // Validate URL
-      try {
-        new URL(url);
-      } catch {
-        return Response.json({ error: "Invalid URL" }, { status: 400 });
-      }
-      await client.set(PREVIEW_BRANCH_KEY, url);
-    } else {
-      // Clear the preview branch URL
-      await client.del(PREVIEW_BRANCH_KEY);
-    }
-
-    return Response.json({ success: true, url: url || null });
+    const normalizedUrl =
+      typeof body.url === "string" && body.url.trim() ? body.url.trim() : null;
+    const savedUrl = await setPreviewBranchUrl(normalizedUrl);
+    return Response.json({ success: true, url: savedUrl });
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error";
+    const status = message.startsWith("Preview branch URL") || message === "Invalid URL"
+      ? 400
+      : 500;
+
     console.error("[settings] Error setting preview branch URL:", error);
     return Response.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { error: message },
+      { status }
     );
   }
 }
