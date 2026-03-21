@@ -45,9 +45,11 @@ const phantoms = [
   {
     color: "#D4F5F5",
     label: "Where do I start?",
+    persona: "First-time visitor",
+    image: "/images/personas/first-timer.png",
     x: "28%",
     y: "24%",
-    size: 48,
+    size: 72,
     bobDuration: "3.2s",
     bobDelay: "0s",
     bubbleDuration: "4.0s",
@@ -56,9 +58,11 @@ const phantoms = [
   {
     color: "#F5D4E6",
     label: "Show me pricing",
+    persona: "Buyer",
+    image: "/images/personas/budget-buyer.png",
     x: "42%",
     y: "58%",
-    size: 44,
+    size: 66,
     bobDuration: "3.6s",
     bobDelay: "0.4s",
     bubbleDuration: "4.5s",
@@ -67,9 +71,11 @@ const phantoms = [
   {
     color: "#D4F5D8",
     label: "Good contrast ratio",
+    persona: "Accessibility auditor",
+    image: "/images/personas/accessibility.png",
     x: "56%",
     y: "18%",
-    size: 52,
+    size: 76,
     bobDuration: "2.9s",
     bobDelay: "0.8s",
     bubbleDuration: "3.8s",
@@ -78,9 +84,11 @@ const phantoms = [
   {
     color: "#F5EED4",
     label: "Gets to the point",
-    x: "68%",
-    y: "52%",
-    size: 40,
+    persona: "Executive",
+    image: "/images/personas/executive.png",
+    x: "62%",
+    y: "60%",
+    size: 62,
     bobDuration: "3.4s",
     bobDelay: "0.2s",
     bubbleDuration: "5.0s",
@@ -89,9 +97,11 @@ const phantoms = [
   {
     color: "#E0D4F5",
     label: "Prefer version B",
+    persona: "Developer",
+    image: "/images/personas/power-user.png",
     x: "82%",
-    y: "30%",
-    size: 46,
+    y: "20%",
+    size: 70,
     bobDuration: "3.1s",
     bobDelay: "0.6s",
     bubbleDuration: "4.2s",
@@ -182,64 +192,150 @@ export default function Home() {
             Coding agents collapsed the build cycle. The experiment queue didn&apos;t.
           </p>
 
-          {/* Pipeline comparison — two rows */}
-          <div className="mb-14 space-y-4">
-            {/* Row 1: Today's pipeline */}
+          {/* Pipeline comparison — three eras */}
+          <div className="mb-14 space-y-10">
+            {/* Era 1: Before AI — balanced cadence */}
             <div>
-              <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-[#666]">
-                Today
-              </p>
-              <div className="flex items-center gap-0 overflow-x-auto">
-                <div className="flex shrink-0 items-center gap-1.5 rounded-l border border-[#1e1e1e] bg-[#111] px-3 py-2">
-                  <span className="text-xs text-[#999]">Coding agent</span>
-                </div>
-                <div className="flex shrink-0 items-center border-y border-[#1e1e1e] bg-[#111] px-2 py-2">
-                  <span className="font-mono text-[10px] text-emerald-500/70">~2hr</span>
-                </div>
-                <div className="h-px w-3 shrink-0 bg-[#333]" />
-                <div className="flex shrink-0 items-center border border-[#1e1e1e] bg-[#111] px-3 py-2">
-                  <span className="text-xs text-[#999]">PR + Preview</span>
-                </div>
-                <div className="h-px w-3 shrink-0 bg-[#333]" />
-                <div className="flex shrink-0 items-center border border-[#FF2A2A]/20 bg-[#FF2A2A]/5 px-3 py-2">
-                  <span className="text-xs text-[#FF6B6B]">A/B test queue</span>
-                </div>
-                <div className="flex shrink-0 items-center border-y border-r border-[#FF2A2A]/20 bg-[#FF2A2A]/5 px-2 py-2">
-                  <span className="font-mono text-[10px] text-[#FF6B6B]">2-4 wk</span>
-                </div>
-                <div className="h-px w-3 shrink-0 bg-[#333]" />
-                <div className="flex shrink-0 items-center rounded-r border border-[#1e1e1e] bg-[#111] px-3 py-2">
-                  <span className="text-xs text-[#555]">Statsig result</span>
-                </div>
+              <div className="mb-3 flex items-baseline gap-3">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-[#666]">
+                  Before AI
+                </p>
+                <p className="font-mono text-[10px] text-[#444]">
+                  dev speed ≈ test throughput
+                </p>
               </div>
+              {/* Column headers */}
+              <div className="mb-2 grid grid-cols-[1fr_8px_1fr_8px_auto] items-center">
+                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">Dev</span>
+                <span />
+                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">A/B test</span>
+                <span />
+                <span />
+              </div>
+              <div className="space-y-1.5">
+                {["Feature 1", "Feature 2", "Feature 3"].map((name, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_8px_1fr_8px_auto] items-center">
+                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
+                      <span className="text-xs text-[#999]">{name}</span>
+                    </div>
+                    <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
+                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
+                      <span className="text-xs text-[#999]">A/B test</span>
+                    </div>
+                    <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
+                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5">
+                      <span className="text-xs text-[#555]">Ship</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 font-mono text-[10px] text-[#444]">
+                One feature finishes dev → one slot opens for A/B test. No queue.
+              </p>
             </div>
 
-            {/* Row 2: With GhostShip */}
+            {/* Era 2: Today — features pile up */}
             <div>
-              <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-ghost/70">
-                With GhostShip
+              <div className="mb-3 flex items-baseline gap-3">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-[#666]">
+                  Today
+                </p>
+                <p className="font-mono text-[10px] text-[#FF6B6B]/60">
+                  features ship faster than you can test them
+                </p>
+              </div>
+              {/* Column headers */}
+              <div className="mb-2 grid grid-cols-[100px_8px_1fr] items-center">
+                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">Dev</span>
+                <span />
+                <span className="font-mono text-[9px] uppercase tracking-wider text-[#444]">A/B test</span>
+              </div>
+              <div className="space-y-1.5">
+                {/* Feature 1 — currently testing */}
+                <div className="grid grid-cols-[100px_8px_1fr] items-center">
+                  <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
+                    <span className="font-mono text-[10px] text-emerald-500/50">done</span>
+                  </div>
+                  <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
+                  <div className="flex items-center rounded border border-amber-500/20 bg-amber-500/[0.03]">
+                    <div className="flex-1 px-2.5 py-1.5">
+                      <span className="text-xs text-amber-500">Feature 1</span>
+                    </div>
+                    <div className="border-l border-amber-500/10 px-2 py-1.5">
+                      <span className="font-mono text-[10px] text-amber-500/60 queue-pulse">2-4 wk</span>
+                    </div>
+                  </div>
+                </div>
+                {/* Features 2-5 — done but queued */}
+                {["Feature 2", "Feature 3", "Feature 4", "Feature 5"].map((name, i) => (
+                  <div key={i} className="grid grid-cols-[100px_8px_1fr] items-center">
+                    <div className="rounded border border-[#1e1e1e] bg-[#111] px-2.5 py-1.5 text-center">
+                      <span className="font-mono text-[10px] text-emerald-500/50">done</span>
+                    </div>
+                    <div className="flex justify-center"><div className="h-px w-full bg-[#333]" /></div>
+                    <div className="rounded border border-[#FF2A2A]/20 bg-[#FF2A2A]/[0.03] px-2.5 py-1.5">
+                      <span className="text-xs text-[#FF6B6B]">{name}</span>
+                      <span className="ml-2 font-mono text-[10px] text-[#FF6B6B]/40">queued</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 font-mono text-[10px] text-[#FF6B6B]/50">
+                Dev takes hours. A/B tests take weeks. The queue only grows.
               </p>
-              <div className="flex items-center gap-0">
-                <div className="flex shrink-0 items-center gap-1.5 rounded-l border border-[#1e1e1e] bg-[#111] px-3 py-2">
-                  <span className="text-xs text-[#999]">Coding agent</span>
-                </div>
-                <div className="flex shrink-0 items-center border-y border-[#1e1e1e] bg-[#111] px-2 py-2">
-                  <span className="font-mono text-[10px] text-emerald-500/70">~2hr</span>
-                </div>
-                <div className="h-px w-3 shrink-0 bg-[#333]" />
-                <div className="flex shrink-0 items-center border border-[#1e1e1e] bg-[#111] px-3 py-2">
-                  <span className="text-xs text-[#999]">PR + Preview</span>
-                </div>
-                <div className="h-px w-3 shrink-0 bg-[#333]" />
-                <div className="flex shrink-0 items-center border border-ghost/20 bg-ghost/5 px-3 py-2">
-                  <span className="text-xs text-ghost">GhostShip</span>
-                </div>
-                <div className="flex shrink-0 items-center rounded-r border-y border-r border-ghost/20 bg-ghost/5 px-2 py-2">
-                  <span className="font-mono text-[10px] text-ghost">30s</span>
-                </div>
-                <div className="h-px w-3 shrink-0 bg-[#333]" />
-                <div className="flex shrink-0 items-center rounded-r border border-[#1e1e1e] bg-[#111] px-3 py-2">
-                  <span className="text-xs text-[#999]">Ship / kill / test</span>
+            </div>
+
+            {/* Era 3: With GhostShip */}
+            <div>
+              <div className="mb-3 flex items-baseline gap-3">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-ghost/70">
+                  With GhostShip
+                </p>
+                <p className="font-mono text-[10px] text-ghost/40">
+                  pre-filter before real traffic
+                </p>
+              </div>
+              <div className="overflow-x-auto pb-2">
+                <div className="flex w-max items-start">
+                  <div className="mt-4 flex items-center">
+                    <div className="rounded-l border border-[#1e1e1e] bg-[#111] px-3 py-1.5">
+                      <span className="text-xs text-[#999]">Dev</span>
+                    </div>
+                    <div className="border-y border-r border-[#1e1e1e] bg-[#111] px-2 py-1.5">
+                      <span className="font-mono text-[10px] text-emerald-500/70">~2hr</span>
+                    </div>
+                  </div>
+
+                  <div className="mx-1.5 mt-[18px] h-px w-2 bg-[#333]" />
+
+                  <div className="mt-4 rounded border border-ghost/20 bg-ghost/5 px-2.5 py-1.5">
+                    <span className="font-mono text-[10px] text-ghost">Persona review</span>
+                    <span className="ml-1.5 font-mono text-[9px] text-ghost/50">30s</span>
+                  </div>
+
+                  <div className="mx-1.5 mt-[18px] h-px w-2 bg-[#333]" />
+
+                  {/* Three parallel outcome paths */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-px w-3 bg-[#333]" />
+                      <div className="rounded border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1">
+                        <span className="font-mono text-[10px] text-emerald-500">Ship</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-px w-3 bg-[#333]" />
+                      <div className="rounded border border-[#FF4444]/20 bg-[#FF4444]/5 px-2.5 py-1">
+                        <span className="font-mono text-[10px] text-[#FF6B6B]">Kill</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-px w-3 bg-[#333]" />
+                      <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2.5 py-1">
+                        <span className="font-mono text-[10px] text-amber-500">A/B test</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -417,7 +513,30 @@ export default function Home() {
                   animationDelay: ghost.bobDelay,
                 }}
               >
-                <Ghost color={ghost.color} size={ghost.size} />
+                <Image
+                  src={ghost.image}
+                  alt={ghost.persona}
+                  width={ghost.size}
+                  height={ghost.size}
+                  className="mix-blend-lighten"
+                  style={{
+                    maskImage: "radial-gradient(circle, black 45%, transparent 75%)",
+                    WebkitMaskImage: "radial-gradient(circle, black 45%, transparent 75%)",
+                  }}
+                />
+              </div>
+              {/* Persona pill */}
+              <div className="mt-1 flex justify-center">
+                <span
+                  className="whitespace-nowrap rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider"
+                  style={{
+                    color: ghost.color,
+                    background: `${ghost.color}12`,
+                    border: `1px solid ${ghost.color}20`,
+                  }}
+                >
+                  {ghost.persona}
+                </span>
               </div>
               {/* Speech bubble */}
               <div
@@ -444,7 +563,7 @@ export default function Home() {
           {/* Mobile ghosts — simpler layout */}
           <div className="flex flex-wrap items-start justify-center gap-10 pt-12 md:hidden">
             {phantoms.map((ghost, i) => (
-              <div key={`m-${i}`} className="flex flex-col items-center gap-3">
+              <div key={`m-${i}`} className="flex flex-col items-center gap-2">
                 <div
                   className="ghost-bob"
                   style={{
@@ -452,8 +571,29 @@ export default function Home() {
                     animationDelay: ghost.bobDelay,
                   }}
                 >
-                  <Ghost color={ghost.color} size={40} />
+                  <Image
+                    src={ghost.image}
+                    alt={ghost.persona}
+                    width={56}
+                    height={56}
+                    className="mix-blend-lighten"
+                    style={{
+                      maskImage: "radial-gradient(circle, black 45%, transparent 75%)",
+                      WebkitMaskImage: "radial-gradient(circle, black 45%, transparent 75%)",
+                    }}
+                  />
                 </div>
+                {/* Persona pill */}
+                <span
+                  className="whitespace-nowrap rounded-full px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider"
+                  style={{
+                    color: ghost.color,
+                    background: `${ghost.color}12`,
+                    border: `1px solid ${ghost.color}20`,
+                  }}
+                >
+                  {ghost.persona}
+                </span>
                 <div
                   className="bubble-fade"
                   style={{

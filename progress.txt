@@ -250,6 +250,27 @@ BATCH 3: POLISH & SHIP
    [ ] Submit before 5:00 PM
 
 =====================================
+BATCH 2.8: UNIFIED 3-CAPABILITY BOT
+=====================================
+
+## Track 13: Single-URL Page Review in Orchestrator + Bot
+   Owner: src/lib/agent.ts (MODIFY), src/lib/bot.tsx (MODIFY), src/lib/personas.ts (MODIFY)
+   Purpose: Wire evaluatePage() into orchestrator + bot so all 3 capabilities work from Slack/GitHub
+   [ ] Add PageReviewReport type to personas.ts
+   [ ] Add reviewPage(url) function to agent.ts
+       — screenshots URL, runs all 5 personas via evaluatePage(), aggregates scores + summary
+   [ ] Update bot.tsx mention handler routing:
+       — 0 URLs + GitHub PR → runGhostshipForPR() (PR comparison)
+       — 1 URL + Vercel preview → runGhostship() (auto-detect prod, A/B compare)
+       — 1 URL + non-Vercel → reviewPage() (single page review)
+       — 2 URLs → runGhostship(url1, url2) (explicit A/B compare)
+   [ ] Add formatPageReview() Card layout for single-page results
+       — persona scores, impressions, strengths/weaknesses, average score
+   VERIFY: @ghostship https://stripe.com/pricing → single page review card
+   VERIFY: @ghostship https://preview.vercel.app/pricing → A/B comparison card
+   VERIFY: @ghostship url1 url2 → explicit comparison card
+
+=====================================
 ADVANCED: INTERACTIVE PERSONA AGENTS
 =====================================
 
@@ -272,6 +293,26 @@ ADVANCED: INTERACTIVE PERSONA AGENTS
    [ ] Add --deep flag to Slack/GitHub handler: @ghostship <url> --deep
    VERIFY: persona navigates page, takes 5-15 actions, produces behavioral evaluation
    VERIFY: each persona has different journey based on their goals
+
+## Track 12: Web CTA — Paste URL, Generate Personas, Run Analysis
+   Owner: src/lib/generate-personas.ts (CREATE), src/app/api/evaluate/route.ts (CREATE),
+          src/components/report-card.tsx (CREATE), src/app/page.tsx (MODIFY)
+   Dep: pnpm add @ai-sdk/react (for streaming hooks)
+   Purpose: Landing page CTA where anyone can paste a URL and get a full evaluation
+   [ ] Create generate-personas.ts — Gemini generates 5 personas specific to the page content
+       — takes screenshot Buffer + optional URL
+       — system prompt: "generate personas relevant to THIS page, not generic ones"
+       — returns Persona[] tailored to the page (e.g., cooking site → food personas)
+   [ ] Create /api/evaluate route — POST { url } → screenshot → generate personas → evaluate all → JSON
+   [ ] Create report-card.tsx component — displays evaluations with persona cards, scores, strengths/weaknesses
+   [ ] Add CTA section to page.tsx below existing hero
+       — input field: "Paste any URL"
+       — submit button: "Deploy Phantom Users"
+       — phased loading: screenshotting → generating personas → evaluating → done
+       — results stream in per persona as they complete
+   [ ] (Stretch) Stream results via SSE instead of waiting for all 5
+   VERIFY: paste URL on localhost:3000 → personas generated → evaluations shown
+   VERIFY: generated personas are specific to the page (not generic)
 
 =====================================
 NOTES / BLOCKERS
