@@ -23,9 +23,17 @@ export async function POST(
 
   // Handle the webhook with waitUntil for background processing
   // Next.js after() ensures work completes after the response is sent
-  return webhookHandler(request, {
-    waitUntil: (task) => after(() => task),
-  });
+  try {
+    return await webhookHandler(request, {
+      waitUntil: (task) => after(() => task),
+    });
+  } catch (err) {
+    // Always return 200 to prevent the platform from redelivering the webhook.
+    // Errors in handler logic (e.g. Redis failures, missing fields) should not
+    // cause infinite redelivery loops.
+    console.error(`[webhook/${platform}] Handler error:`, err);
+    return new Response("ok", { status: 200 });
+  }
 }
 
 // GET handler — serves as health check, but also forwards to webhook handler
