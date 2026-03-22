@@ -19,11 +19,14 @@ if (!process.env.VERCEL) {
 }
 
 try {
-  // Resolve @sparticuz/chromium's installed location
-  const chromiumPath = dirname(
-    fileURLToPath(import.meta.resolve("@sparticuz/chromium"))
-  );
-  const binDir = join(chromiumPath, "bin");
+  // Resolve @sparticuz/chromium's package root
+  // import.meta.resolve gives a deep path like .../node_modules/@sparticuz/chromium/build/esm/index.js
+  // We extract up to the package directory by finding the package name in the path
+  const entryPath = fileURLToPath(import.meta.resolve("@sparticuz/chromium"));
+  const marker = join("@sparticuz", "chromium");
+  const markerIdx = entryPath.indexOf(marker);
+  const pkgDir = entryPath.substring(0, markerIdx + marker.length);
+  const binDir = join(pkgDir, "bin");
 
   if (!existsSync(binDir)) {
     console.error("[postinstall] @sparticuz/chromium bin/ not found at", binDir);
