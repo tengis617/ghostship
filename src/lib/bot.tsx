@@ -98,6 +98,12 @@ async function getHistory(thread: { adapter: { fetchMessages(threadId: string, o
 
 // Handle new @mentions of the bot
 bot.onNewMention(async (thread, message) => {
+  // Skip messages from bots (including ourselves) to prevent infinite loops.
+  // In multi-tenant GitHub App mode, _botUserId may be null so isMe is unreliable.
+  if (message.author.isBot || message.author.isMe) {
+    return;
+  }
+
   await thread.subscribe();
   await ackWithReaction(thread, message.id);
 
@@ -685,6 +691,9 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Handle messages matching a pattern
 bot.onNewMessage(/help/i, async (thread, message) => {
+  if (message.author.isBot || message.author.isMe) {
+    return;
+  }
   const platforms = Object.keys(adapters).join(", ") || "none configured";
   await thread.post(
     <Card title={`${emoji.question} Help`}>
@@ -703,6 +712,9 @@ bot.onNewMessage(/help/i, async (thread, message) => {
 
 // Handle messages in subscribed threads — continue the conversation
 bot.onSubscribedMessage(async (thread, message) => {
+  if (message.author.isBot || message.author.isMe) {
+    return;
+  }
   if (!message.text.trim()) {
     return;
   }
