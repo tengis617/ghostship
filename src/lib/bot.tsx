@@ -64,11 +64,14 @@ function parseGitHubThreadId(threadId: string): PrContext | undefined {
   return { owner: match[1], repo: match[2], prNumber: parseInt(match[3], 10) };
 }
 
-// Create a per-request agent with the thread bound for plan block streaming
-function createAgent(thread?: { id: string; adapter: unknown }) {
-  return createGhostshipAgent(
-    thread as Parameters<typeof createGhostshipAgent>[0]
-  );
+// Create a per-request agent with the thread bound for progress streaming.
+function createAgent(thread?: { id: string; adapter: { name: string } }) {
+  if (!thread) return createGhostshipAgent();
+  return createGhostshipAgent({
+    id: thread.id,
+    adapterName: thread.adapter.name,
+    post: (msg: any) => (thread as any).post(msg),
+  });
 }
 
 // Acknowledge a mention with an eyes reaction (best-effort, no-op on failure)
@@ -123,17 +126,23 @@ bot.onNewMention(async (thread, message) => {
     if (thread.adapter.name === "github") {
       // GitHub rejects empty comment bodies — wait for full text instead of streaming
       const text = await result.text;
-      if (text.trim()) {
-        await thread.post(text);
-      }
+      const content = text.trim() || "Evaluation completed but produced no output.";
+      // GitHub comments have a 65,536 char limit — truncate if needed
+      const MAX = 65_000;
+      const body =
+        content.length > MAX
+          ? content.slice(0, MAX) + "\n\n…_(truncated)_"
+          : content;
+      await thread.post(body);
     } else {
       await thread.post(result.fullStream);
     }
   } catch (err) {
     console.error("GhostShip error:", err);
-    await thread.post(
-      `${emoji.warning} ${err instanceof Error ? err.message : "Something went wrong"}`
-    );
+    const msg = err instanceof Error ? err.message : "Something went wrong";
+    // Keep error short — don't echo raw API errors that pollute thread history
+    const short = msg.length > 200 ? msg.slice(0, 200) + "…" : msg;
+    await thread.post(`${emoji.warning} ${short}`);
   }
 });
 
@@ -725,9 +734,13 @@ bot.onSubscribedMessage(async (thread, message) => {
 
     if (thread.adapter.name === "github") {
       const text = await result.text;
-      if (text.trim()) {
-        await thread.post(text);
-      }
+      const content = text.trim() || "Evaluation completed but produced no output.";
+      const MAX = 65_000;
+      const body =
+        content.length > MAX
+          ? content.slice(0, MAX) + "\n\n…_(truncated)_"
+          : content;
+      await thread.post(body);
     } else {
       await thread.post(result.fullStream);
     }
@@ -738,9 +751,9 @@ bot.onSubscribedMessage(async (thread, message) => {
     await thread.setState({ history });
   } catch (err) {
     console.error("GhostShip error:", err);
-    await thread.post(
-      `${emoji.warning} ${err instanceof Error ? err.message : "Something went wrong"}`
-    );
+    const msg = err instanceof Error ? err.message : "Something went wrong";
+    const short = msg.length > 200 ? msg.slice(0, 200) + "…" : msg;
+    await thread.post(`${emoji.warning} ${short}`);
   }
 });
 

@@ -21,7 +21,8 @@ export interface PrContext {
 // Thread-like object that supports posting streaming plan blocks
 export interface StreamableThread {
   id: string;
-  post(message: AsyncIterable<string | StreamChunk>): Promise<unknown>;
+  adapterName?: string;
+  post(message: AsyncIterable<string | StreamChunk> | string): Promise<unknown>;
 }
 
 // ── Confidence & recommendations ──────────────────────────────────────
@@ -272,6 +273,14 @@ async function* streamEvaluationProgress<T>(
 }
 
 // Post a plan block to the thread as a side-effect (if the adapter supports streaming)
+const GHOST_PROGRESS = [
+  "👻 GhostShip docking… phantom crew boarding the preview",
+  "👻 Ghosts are walking through walls and judging your UI",
+  "👻 Deploying 5 spectral critics — they can see through bad UX",
+  "👻 Phantom crew manifesting… prepare to be haunted by feedback",
+  "👻 The ghosts have entered the building. Nobody leaves until the UX is reviewed",
+];
+
 async function streamPlanBlock<T>(
   thread: StreamableThread | undefined,
   entries: Array<{ persona: Persona; promise: Promise<T> }>,
@@ -279,6 +288,14 @@ async function streamPlanBlock<T>(
   planTitle: string
 ): Promise<void> {
   if (!thread) {
+    return;
+  }
+
+  if (thread.adapterName === "github") {
+    const msg = GHOST_PROGRESS[Math.floor(Math.random() * GHOST_PROGRESS.length)];
+    const crew = entries.map((e) => `${e.persona.emoji} ${e.persona.name}`).join(" · ");
+    await thread.post(`${msg}\n\n${crew}`);
+    await Promise.allSettled(entries.map((e) => e.promise));
     return;
   }
 
@@ -296,7 +313,7 @@ const AGENT_INSTRUCTIONS = `You are GhostShip 👻 — an AI orchestrator that e
 CRITICAL RULES:
 - When the user provides ANY URL or mentions a PR, you MUST use your tools. NEVER simulate, fake, or manually write an evaluation.
 - You are NOT a UX reviewer yourself. You are an orchestrator that calls tools to run real evaluations. Your tools do the actual work.
-- If a tool fails, report the error. Do NOT fall back to writing a manual review.
+- If a tool fails, say what failed in ONE short sentence. Do NOT speculate about causes, suggest fixes, or mention permissions/deployments. Do NOT fall back to writing a manual review.
 
 Your tools:
 • compare_pages — A/B test two URLs with 5 page-specific AI personas (requires preview_url AND production_url)
@@ -316,8 +333,13 @@ Mapping Next.js source files to page routes:
   src/app/page.tsx → /
   src/app/pricing/page.tsx → /pricing
 
-After a tool returns evaluation results, present them clearly with the verdict, recommendation, and each persona's take. Use markdown formatting.
-Keep non-evaluation responses concise.`;
+After a tool returns results, present a SHORT summary:
+1. Verdict line: winner, vote split, confidence, recommendation — one line
+2. Persona table: one row per persona with emoji, name, preference, and a ≤10-word rationale
+3. If there's a notable dissent, add one sentence about it
+
+Do NOT repeat pros/cons lists, do NOT echo raw tool output, do NOT add introductions or conclusions.
+Total response must be under 2000 characters. GitHub has a comment length limit — brevity is critical.`;
 
 /**
  * Create a per-request GhostShip agent with the thread bound for plan block streaming.
