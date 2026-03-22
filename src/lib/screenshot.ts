@@ -1,13 +1,41 @@
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
 import { assertSafeScreenshotUrl } from "./url-safety";
 
+const isVercel = !!process.env.VERCEL;
+
+// Cache the chromium executable path to avoid re-downloading on warm starts
+let cachedExecutablePath: string | null = null;
+let downloadPromise: Promise<string> | null = null;
+
+async function getChromiumPath(): Promise<string> {
+  if (cachedExecutablePath) return cachedExecutablePath;
+
+  if (!downloadPromise) {
+    const chromium = (await import("@sparticuz/chromium-min")).default;
+    const chromiumPackUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/chromium-pack.tar`;
+    downloadPromise = chromium
+      .executablePath(chromiumPackUrl)
+      .then((path: string) => {
+        cachedExecutablePath = path;
+        return path;
+      })
+      .catch((error: Error) => {
+        downloadPromise = null;
+        throw error;
+      });
+  }
+
+  return downloadPromise;
+}
+
 async function getBrowser() {
-  if (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL) {
+  if (isVercel) {
+    const chromium = (await import("@sparticuz/chromium-min")).default;
+    const executablePath = await getChromiumPath();
     return puppeteer.launch({
       args: chromium.args,
       defaultViewport: { width: 1280, height: 800 },
-      executablePath: await chromium.executablePath(),
+      executablePath,
       headless: true,
     });
   }

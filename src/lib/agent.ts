@@ -467,8 +467,19 @@ export function createGhostshipAgent(thread?: StreamableThread) {
             "👻 Persona Evaluations"
           );
 
-          // All promises are settled now — this is instant
-          const results = await Promise.all(promises);
+          // Collect results, tolerating individual persona failures
+          const settled = await Promise.allSettled(promises);
+          const results = settled
+            .filter(
+              (s): s is PromiseFulfilledResult<PersonaResult> =>
+                s.status === "fulfilled"
+            )
+            .map((s) => s.value);
+
+          if (results.length === 0) {
+            return { error: "All persona evaluations failed" };
+          }
+
           const report = buildReport(results, preview_url, production_url);
 
           return {
@@ -519,8 +530,18 @@ export function createGhostshipAgent(thread?: StreamableThread) {
             "👻 Page Review"
           );
 
-          // All settled — instant
-          const evaluations = await Promise.all(promises);
+          // Collect results, tolerating individual persona failures
+          const settled = await Promise.allSettled(promises);
+          const evaluations = settled
+            .filter(
+              (s): s is PromiseFulfilledResult<PageEvaluation> =>
+                s.status === "fulfilled"
+            )
+            .map((s) => s.value);
+
+          if (evaluations.length === 0) {
+            return { error: "All persona evaluations failed" };
+          }
           const averageScore =
             evaluations.reduce((sum, e) => sum + e.score, 0) /
             evaluations.length;

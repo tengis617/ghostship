@@ -119,7 +119,16 @@ bot.onNewMention(async (thread, message) => {
   try {
     const agent = createAgent(thread);
     const result = await agent.stream({ prompt: history });
-    await thread.post(result.fullStream);
+
+    if (thread.adapter.name === "github") {
+      // GitHub rejects empty comment bodies — wait for full text instead of streaming
+      const text = await result.text;
+      if (text.trim()) {
+        await thread.post(text);
+      }
+    } else {
+      await thread.post(result.fullStream);
+    }
   } catch (err) {
     console.error("GhostShip error:", err);
     await thread.post(
@@ -713,7 +722,16 @@ bot.onSubscribedMessage(async (thread, message) => {
   try {
     const agent = createAgent(thread);
     const result = await agent.stream({ prompt: history });
-    await thread.post(result.fullStream);
+
+    if (thread.adapter.name === "github") {
+      const text = await result.text;
+      if (text.trim()) {
+        await thread.post(text);
+      }
+    } else {
+      await thread.post(result.fullStream);
+    }
+
     // Persist history for platforms without fetchMessages
     const responseText = await result.text;
     history.push({ role: "assistant", content: responseText });
